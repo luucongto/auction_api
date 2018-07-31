@@ -22,6 +22,7 @@ var sendToken = function (req, res) {
   return res.json({
     success: true,
     token: req.token,
+    id: req.user.id,
     name: req.user.name
   })
 }

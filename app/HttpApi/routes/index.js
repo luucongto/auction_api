@@ -1,6 +1,5 @@
 import auth from './auth'
-import testBalance from './testBalance'
 import baseRoutes from './baseRoutes'
-import binanceRoutes from './binanceRoutes'
-
-module.exports = {auth, testBalance, baseRoutes, binanceRoutes}
+import productRoutes from './product'
+import accountRoutes from './account'
+module.exports = {auth, baseRoutes, productRoutes, accountRoutes}

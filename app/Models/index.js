@@ -1,5 +1,5 @@
 const Sequelize = require('sequelize')
-const connectionString = process.env.CLEARDB_DATABASE_URL || 'mysql://root@localhost:33306/socket?reconnect=true'
+const connectionString = process.env.CLEARDB_DATABASE_URL || 'mysql://root@localhost:33306/auction?reconnect=true'
 const sequelize = new Sequelize(connectionString)
 
 // const sequelize = new Sequelize('socket', 'root', '', {
@@ -24,7 +24,8 @@ const User = sequelize.define('user', {
   logged_at: Sequelize.INTEGER,
   password: Sequelize.STRING,
   socketid: Sequelize.STRING,
-  roomsocketid: Sequelize.STRING
+  roomsocketid: Sequelize.STRING,
+  role: {type: Sequelize.STRING, default: 'user'}
 }, {
   indexes: [
     // Create a unique index on email
@@ -36,56 +37,50 @@ const User = sequelize.define('user', {
     { name: 'email', fields: ['email'] },
     { name: 'google_id', fields: ['google_id'] }
   ]
-
 })
 
-const Room = sequelize.define('room', {
+const Products = sequelize.define('product', {
   name: Sequelize.STRING,
-  socketid: Sequelize.STRING,
-  num: Sequelize.INTEGER
+  category: Sequelize.STRING,
+  ams_code: Sequelize.STRING,
+  detail: Sequelize.TEXT,
+  start_at: {type: Sequelize.INTEGER, default: 0},
+  start_price: {type: Sequelize.INTEGER, default: 10000},
+  step_price: {type: Sequelize.INTEGER, default: 1000},
+  round_time_1: {type: Sequelize.INTEGER, default: 360},
+  round_time_2: {type: Sequelize.INTEGER, default: 60},
+  round_time_3: {type: Sequelize.INTEGER, default: 30},
+  status: {type: Sequelize.STRING, default: 'waiting'},
+  winner_id: Sequelize.INTEGER,
+  win_price: Sequelize.INTEGER
 })
 
-const BinanceUser = sequelize.define('binance_user', {
-  user_id: {type: Sequelize.INTEGER, primaryKey: true},
-  api_key: Sequelize.STRING,
-  api_secret: Sequelize.STRING
+const ProductImages = sequelize.define('product_image', {
+  product_id: Sequelize.INTEGER,
+  src: Sequelize.TEXT,
+  caption: Sequelize.TEXT
 })
 
-const UserOrder = sequelize.define('user_order', {
-  user_id: {type: Sequelize.INTEGER},
-  balance_id: Sequelize.INTEGER,
-  binance_order_id: Sequelize.INTEGER,
-  type: Sequelize.STRING,
-  price: Sequelize.FLOAT,
-  expect_price: Sequelize.FLOAT,
-  offset: Sequelize.FLOAT,
-  quantity: Sequelize.FLOAT,
-  mode: Sequelize.STRING,
-  pair: Sequelize.STRING,
-  status: Sequelize.STRING,
-  asset: Sequelize.STRING,
-  currency: Sequelize.STRING
+const AuctionBids = sequelize.define('auction_bid', {
+  product_id: Sequelize.INTEGER,
+  user_id: Sequelize.INTEGER,
+  placed_at: Sequelize.INTEGER,
+  bid_price: Sequelize.INTEGER
+}, {
+  indexes: [
+    {name: 'product_user', fields: ['product_id', 'user_id']},
+    {name: 'price', fields: ['bid_price']}
+  ]
 })
-
-const TestBalance = sequelize.define('test_balance', {
-  user_id: {type: Sequelize.INTEGER},
-  pair: {type: Sequelize.STRING},
-  asset: Sequelize.STRING,
-  currency: Sequelize.STRING,
-  currency_num: Sequelize.FLOAT,
-  asset_num: Sequelize.FLOAT,
-  initial_currency_num: Sequelize.FLOAT,
-  initial_asset_num: Sequelize.FLOAT,
-  offset: {type: Sequelize.FLOAT},
-  type: Sequelize.STRING,
-  status: Sequelize.STRING
+const AuctionConfigs = sequelize.define('auction_config', {
+  key: Sequelize.STRING,
+  value: Sequelize.INTEGER
 })
-
 module.exports = {
   sequelize,
   User,
-  Room,
-  BinanceUser,
-  UserOrder,
-  TestBalance
+  Products,
+  ProductImages,
+  AuctionBids,
+  AuctionConfigs
 }

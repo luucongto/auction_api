@@ -2,18 +2,31 @@
 import passport from './app/HttpApi/passport'
 import socketJwtAuth from './app/SocketApi/jwtAuth'
 
-import {auth, baseRoutes, binanceRoutes, testBalance} from './app/HttpApi/routes'
-import {sequelize} from './app/Models'
-import BinanceBot from './app/Bot/BinanceBot'
-import BinanceTestTrade from './app/Bot/BinanceTestTrade'
+import {auth, baseRoutes, accountRoutes, productRoutes} from './app/HttpApi/routes'
+import {sequelize, User} from './app/Models'
+import AuctionBot from './app/Bot/AuctionBot'
 import moment from 'moment'
+import bcrypt from 'bcrypt'
 require('dotenv').config()
 const express = require('express')
 const PORT = process.env.PORT || 3000
 // init db
 sequelize.sync().then(() => {
-  BinanceBot.start()
-  BinanceTestTrade.start()
+  User.findOrCreate({
+    where: {
+      username: 'iamadmin'
+    },
+    defaults: {
+      password: bcrypt.hashSync('very_complex_password', 10),
+      name: 'Admin',
+      email: null,
+      logged_at: new Date().getTime(),
+      role: 'admin'
+    }
+  }).spread((user, create) => {
+    // startBot
+    AuctionBot.start()
+  })
 })
 // Http Server
 var app = express()
@@ -55,8 +68,8 @@ app.use(allowCrossDomain)
 
 app.use('/', baseRoutes)
 app.use('/', auth)
-app.use('/binance', binanceRoutes)
-app.use('/testBalance', testBalance)
+app.use('/product', productRoutes)
+app.use('/account', accountRoutes)
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404))
@@ -67,7 +80,6 @@ app.use(function (err, req, res, next) {
   // set locals, only providing error in development
   res.locals.message = err.message
   res.locals.error = req.app.get('env') === 'development' ? err : {}
-
   // render the error page
   res.status(err.status || 500)
   res.render('error')
@@ -76,22 +88,14 @@ app.use(function (err, req, res, next) {
 // IO server
 var server = require('http').createServer(app)
 const socketIO = require('socket.io')
-// const server = express()
-//   // .use((req, res) => res.sendFile(INDEX))
-//   .listen(PORT, () => console.log(`Listening Socket on ${ PORT }`));
-
 const io = socketIO().listen(server)
 
 io.use(socketJwtAuth)
-
+AuctionBot.setIo(io)
 io.on('connection', (socket) => {
   if (socket.request.user) {
     console.log('Socket Authenticated!!', socket.request.user)
-    BinanceBot.setUser({
-      id: socket.request.user.id,
-      socket: socket
-    })
-    BinanceTestTrade.setUser({
+    AuctionBot.setUser({
       id: socket.request.user.id,
       socket: socket
     })
@@ -101,7 +105,7 @@ io.on('connection', (socket) => {
 })
 
 setInterval(() => io.emit('server_setting', {
-  time: moment().format('MM/DD HH:mm'),
+  time: new Date().getTime() / 1000,
   type: process.env.REAL_API
 }))
 server.listen(PORT, () => console.log(`Listening RESTFUL on ${PORT}`))

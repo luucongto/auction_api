@@ -81,6 +81,11 @@ passport.use(new GoogleTokenStrategy({
 },
   function (accessToken, refreshToken, profile, done) {
     console.log(profile)
+    var email = profile._json.email
+    var domain = email.replace(/.*@/, '')
+    if (domain !== 'punch.vn') {
+      return done(null, false, {message: 'Invalid email domain. Please try again'})
+    }
     User.findOrCreate({
       where: {
         google_id: profile.id
@@ -89,8 +94,8 @@ passport.use(new GoogleTokenStrategy({
         username: profile.id,
         name: profile.displayName,
         image_url: profile._json.picture,
-        email: profile._json.email
-
+        email: profile._json.email,
+        role: 'user'
       }
     }).spread((user, created) => {
       if (!user) {
