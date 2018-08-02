@@ -2,7 +2,7 @@
 import passport from './app/HttpApi/passport'
 import socketJwtAuth from './app/SocketApi/jwtAuth'
 
-import {auth, baseRoutes, accountRoutes, productRoutes} from './app/HttpApi/routes'
+import {auth, baseRoutes, accountRoutes, productRoutes, adminRoutes} from './app/HttpApi/routes'
 import {sequelize, User} from './app/Models'
 import AuctionBot from './app/Bot/AuctionBot'
 import moment from 'moment'
@@ -70,6 +70,7 @@ app.use('/', baseRoutes)
 app.use('/', auth)
 app.use('/product', productRoutes)
 app.use('/account', accountRoutes)
+app.use('/admin', adminRoutes)
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404))
@@ -92,12 +93,17 @@ const io = socketIO().listen(server)
 
 io.use(socketJwtAuth)
 AuctionBot.setIo(io)
+let connectCounter = 0
 io.on('connection', (socket) => {
+  socket.on('connect', function () { connectCounter++ })
+  socket.on('disconnect', function () { connectCounter-- })
   if (socket.request.user) {
-    console.log('Socket Authenticated!!', socket.request.user)
-    AuctionBot.setUser({
-      id: socket.request.user.id,
-      socket: socket
+    socket.join('auction_room', () => {
+      connectCounter++
+      AuctionBot.setUser({
+        id: socket.request.user.id,
+        socket: socket
+      })
     })
   } else {
     console.log('Socket Unauthorized!!')
@@ -106,7 +112,8 @@ io.on('connection', (socket) => {
 
 setInterval(() => io.emit('server_setting', {
   time: new Date().getTime() / 1000,
-  type: process.env.REAL_API
+  type: process.env.REAL_API,
+  clients: connectCounter
 }))
 server.listen(PORT, () => console.log(`Listening RESTFUL on ${PORT}`))
 module.exports = app

@@ -114,8 +114,8 @@ class AuctionBot {
   }
   broadCast (data, event = 'auction') {
     if (this.io) {
-      console.log('broadcast', event, data)
-      this.io.emit(event, data)
+      console.log('broadcast', event, JSON.stringify(data))
+      this.io.to('auction_room').emit(event, data)
     }
   }
   start () {

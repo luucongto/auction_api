@@ -23,7 +23,8 @@ var sendToken = function (req, res) {
     success: true,
     token: req.token,
     id: req.user.id,
-    name: req.user.name
+    name: req.user.name,
+    isAdmin: req.user.role === 'admin'
   })
 }
 
