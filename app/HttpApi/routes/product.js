@@ -5,7 +5,6 @@ var express = require('express')
 var router = express.Router()
 
 let verifyAdmin = (req, res, next) => {
-  console.log('verifyAdmin', req.user)
   if (req.user.role === 'admin') {
     next()
   } else {
@@ -21,7 +20,7 @@ router.get('/all', [passport.authenticate('jwt')], (req, res, next) => {
       data: products
     })
   }).catch(error => {
-    console.log(error)
+    console.error(error)
     res.send({
       success: false,
       error: error.message
@@ -37,7 +36,7 @@ router.get('/:id', [passport.authenticate('jwt')], (req, res, next) => {
       data: products
     })
   }).catch(error => {
-    console.log(error)
+    console.error(error)
     res.send({
       success: false,
       error: error.message
@@ -47,14 +46,13 @@ router.get('/:id', [passport.authenticate('jwt')], (req, res, next) => {
 
 router.put('/:id', [passport.authenticate('jwt'), verifyAdmin], (req, res, next) => {
   let service = new ProductService(req)
-  console.log(req.body)
   service.update(req.params.id, req.body).then(products => {
     res.send({
       success: true,
       data: products
     })
   }).catch(error => {
-    console.log(error)
+    console.error(error)
     res.send({
       success: false,
       error: error.message
@@ -70,7 +68,7 @@ router.post('/create', [passport.authenticate('jwt'), verifyAdmin], (req, res, n
       data: products
     })
   }).catch(error => {
-    console.log(error)
+    console.error(error)
     res.send({
       success: false,
       error: error.message

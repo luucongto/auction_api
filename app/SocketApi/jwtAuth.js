@@ -16,18 +16,17 @@ let authCheck = socketJwtAuth.authenticate({
     }).then(user => {
       if (!user) {
         // return fail with an error message
-        console.log('jwtAuth no user ', payload)
         return done(null, false, 'user does not exist')
       }
       // return success with a user info
       return done(null, {id: user.id})
     }).catch(error => {
         // return error
-      console.log('jwtauth Error', error)
+      console.error('jwtauth Error', error)
       return done(error)
     })
   } else {
-    console.log('jwtAuth, no payload')
+    console.error('jwtAuth, no payload')
     return done() // in your connection handler user.logged_in will be false
   }
 })

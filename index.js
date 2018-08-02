@@ -106,7 +106,7 @@ io.on('connection', (socket) => {
       })
     })
   } else {
-    console.log('Socket Unauthorized!!')
+    console.error('Socket Unauthorized!!')
   }
 })
 

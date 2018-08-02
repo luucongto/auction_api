@@ -46,7 +46,6 @@ class BaseApi {
     socket.on('disconnect', () => {
       self.leaveRoom()
       user.destroy()
-      console.log('Client disconnected' + socket.id)
     })
     // Create Room
     socket.on('create room', function (data) {
@@ -78,7 +77,6 @@ class BaseApi {
     })
     // join room
     socket.on('join room', function (data) {
-      console.log(data)
       Room.findOne({where: { socketid: data }}).then(room => {
         if (!room) return
         room.save({

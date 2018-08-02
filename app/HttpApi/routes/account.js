@@ -12,7 +12,7 @@ router.get('/all', [passport.authenticate('jwt')], (req, res, next) => {
       data: products
     })
   }).catch(error => {
-    console.log(error)
+    console.error(error)
     res.send({
       success: false,
       error: error.message

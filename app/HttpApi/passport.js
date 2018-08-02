@@ -20,7 +20,7 @@ passport.deserializeUser(function (id, done) {
   }).then(function (user) {
     done(null, user)
   }).catch(function (err) {
-    console.log(err)
+    console.error(err)
   })
 })
 
@@ -80,7 +80,6 @@ passport.use(new GoogleTokenStrategy({
   // callbackURL: `${process.env.ROOT_URL || 'http://localhost:3000'}/auth/google/callback`
 },
   function (accessToken, refreshToken, profile, done) {
-    console.log(profile)
     var email = profile._json.email
     var domain = email.replace(/.*@/, '')
     if (domain !== 'punch.vn') {

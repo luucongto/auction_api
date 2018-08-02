@@ -4,7 +4,6 @@ import AdminService from '../../Services/AdminService'
 var express = require('express')
 var router = express.Router()
 let verifyAdmin = (req, res, next) => {
-  console.log('verifyAdmin', req.user)
   if (req.user.role === 'admin') {
     next()
   } else {
@@ -18,7 +17,7 @@ router.get('/apisetting', [passport.authenticate('jwt'), verifyAdmin], (req, res
       data: configs
     })
   }).catch(error => {
-    console.log(error)
+    console.error(error)
     res.send({
       success: false,
       error: error.message
