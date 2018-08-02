@@ -10,8 +10,7 @@ let authCheck = socketJwtAuth.authenticate({
   if (payload && payload.id) {
     User.findOne({
       where: {
-        id: payload.id,
-        logged_at: payload.logged_at
+        id: payload.id
       }
     }).then(user => {
       if (!user) {
