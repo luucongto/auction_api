@@ -34,7 +34,6 @@ class ProductService {
         })
       })
       return Promise.all(queries).then(ps => {
-        console.log('getall', ps)
         return ps
       })
     })

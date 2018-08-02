@@ -114,12 +114,12 @@ class AuctionBot {
   }
   broadCast (data, event = 'auction') {
     if (this.io) {
-      console.log('broadcast', event, JSON.stringify(data))
+      // console.log('broadcast', event, JSON.stringify(data))
       this.io.to('auction_room').emit(event, data)
     }
   }
   start () {
-    console.log('Initializing.... REAL: ' + process.env.REAL_API)
+    // console.log('Initializing.... REAL: ' + process.env.REAL_API)
     let self = this
     let service = new ProductService()
     let now = parseInt(new Date().getTime() / 1000)
@@ -136,7 +136,7 @@ class AuctionBot {
       result.forEach(config => {
         self.auctionConfigs[config.key] = config.value
       })
-      console.log('Config:', self.auctionConfigs)
+      // console.log('Config:', self.auctionConfigs)
       service.getAll().then(products => {
         let queries = products.map(product => {
           return AuctionBids.findAll({
@@ -207,14 +207,14 @@ class AuctionBot {
         self.activeAuctions.push(product.id)
         product.status = 'bidding'
         needBroadcast = true
-        console.log('changeStatus')
+        // console.log('changeStatus')
       }
       // if round is activating
       if (product.round) {
         // if this round is end, go to next round
         if (product.round.end_at < now) {
           product.round.num++
-          console.log('change round')
+          // console.log('change round')
           needBroadcast = true
         } else {
           return
@@ -224,11 +224,11 @@ class AuctionBot {
           product.round.end_at = now + self._getRoundTime(product, product.round.num)
 
           needBroadcast = true
-          console.log('change rouyntTime')
+          // console.log('change rouyntTime')
         } else {
           // end of round, finish auction
           this.activeAuctions.splice(this.activeAuctions.indexOf(product.id), 1)
-          console.log('change finished', this.activeAuctions)
+          // console.log('change finished', this.activeAuctions)
           product.status = 'finished'
           product.winner_id = product.round.bidder
           product.win_price = product.round.bid_price
@@ -249,7 +249,7 @@ class AuctionBot {
       }
     })
     if (needBroadCastProducts.length > 0) {
-      console.log('needBroadCastProducts', needBroadCastProducts.length)
+      // console.log('needBroadCastProducts', needBroadCastProducts.length)
       this.broadCast(needBroadCastProducts)
       needBroadCastProducts = []
     }
