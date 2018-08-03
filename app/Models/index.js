@@ -79,8 +79,12 @@ const AuctionConfigs = sequelize.define('auction_config', {
 })
 const Notices = sequelize.define('notice', {
   title: Sequelize.STRING,
-  stick: Sequelize.INTEGER,
+  start_at: Sequelize.INTEGER,
   content: Sequelize.TEXT
+}, {
+  indexes: [
+    {name: 'start_at', fields: ['start_at']}
+  ]
 })
 module.exports = {
   sequelize,
