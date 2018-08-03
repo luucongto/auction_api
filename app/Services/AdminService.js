@@ -20,11 +20,18 @@ class AdminService {
   post (params) {
     console.log(params)
     let funcs = Object.keys(params).map(key => {
-      return AuctionConfigs.update({value: params[key]}, {where: {key: key}})
+      return AuctionConfigs.findOrCreate({where: {key: key}, defaults: {value: params[key]}})
+          .spread((config, created) => {
+            if (!created) {
+              config.value = params[key]
+              return config.save()
+            }
+            return config
+          })
     })
-    return Promise.all(funcs).then(updatedConfigs => {
+    return Promise.all(funcs).then(configs => {
       AuctionBot.restart()
-      return this.get()
+      return configs
     })
   }
 }

@@ -2,10 +2,9 @@
 import passport from './app/HttpApi/passport'
 import socketJwtAuth from './app/SocketApi/jwtAuth'
 
-import {auth, baseRoutes, accountRoutes, productRoutes, adminRoutes} from './app/HttpApi/routes'
+import {auth, baseRoutes, accountRoutes, productRoutes, adminRoutes, noticeRoutes} from './app/HttpApi/routes'
 import {sequelize, User} from './app/Models'
 import AuctionBot from './app/Bot/AuctionBot'
-import moment from 'moment'
 import bcrypt from 'bcrypt'
 require('dotenv').config()
 const express = require('express')
@@ -71,6 +70,7 @@ app.use('/', auth)
 app.use('/product', productRoutes)
 app.use('/account', accountRoutes)
 app.use('/admin', adminRoutes)
+app.use('/notice', noticeRoutes)
 // catch 404 and forward to error handler
 app.use(function (req, res, next) {
   next(createError(404))

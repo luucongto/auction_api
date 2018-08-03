@@ -77,11 +77,17 @@ const AuctionConfigs = sequelize.define('auction_config', {
   key: Sequelize.STRING,
   value: Sequelize.INTEGER
 })
+const Notices = sequelize.define('notice', {
+  title: Sequelize.STRING,
+  stick: Sequelize.INTEGER,
+  content: Sequelize.TEXT
+})
 module.exports = {
   sequelize,
   User,
   Products,
   ProductImages,
   AuctionBids,
+  Notices,
   AuctionConfigs
 }
