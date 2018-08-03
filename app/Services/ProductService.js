@@ -45,7 +45,11 @@ class ProductService {
         winner_id: userId
       }
     }).then(products => {
-      return {products}
+      let result = {}
+      products.forEach(product => {
+        result[product.id] = product.get()
+      })
+      return {products: result}
     })
   }
   update (id, params) {

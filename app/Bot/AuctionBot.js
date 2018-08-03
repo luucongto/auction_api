@@ -79,8 +79,9 @@ class AuctionBot {
             }).then(bid => {
               self._broadCastToAuctionRoom([self.products[params.product_id]])
             })
+          } else {
+            self._broadCastToAuctionRoom([self.products[params.product_id]])
           }
-
           break
         case 'refresh':
           self._refresh(data.id)
