@@ -12,6 +12,7 @@ class AuctionBot {
     this.products = {}
     this.activeAuctions = []
     this.auctionConfigs = {}
+    this.tickerHandler = false
   }
   setIo (io) {
     this.io = io
@@ -76,7 +77,7 @@ class AuctionBot {
               bid_price: params.bid_price,
               placed_at: now
             }).then(bid => {
-              self.broadCast([self.products[params.product_id]])
+              self._broadCastToAuctionRoom([self.products[params.product_id]])
             })
           }
 
@@ -87,10 +88,15 @@ class AuctionBot {
       }
     })
   }
-
+  restart () {
+    this.activeAuctions = []
+    this.products = {}
+    clearTimeout(this.tickerHandler)
+    this.start()
+  }
   _refresh (userId) {
     let self = this
-    self.emitUser(userId, Object.values(self.products))
+    self._emitUser(userId, Object.values(self.products))
     if (!self.userDB[userId]) {
       User.findById(userId).then(user => {
         if (!user) return null
@@ -98,13 +104,13 @@ class AuctionBot {
           name: user.name,
           image_url: user.image_url
         }
-        self.broadCast(self.userDB, 'users')
+        self._broadCastToAuctionRoom(self.userDB, 'users')
       })
     }
-    self.emitUser(userId, self.userDB, 'users')
+    self._emitUser(userId, self.userDB, 'users')
   }
 
-  emitUser (userId, products, event = 'auction') {
+  _emitUser (userId, products, event = 'auction') {
     if (!userId) {
       console.error('Emit order null userid')
     }
@@ -112,14 +118,14 @@ class AuctionBot {
       this.activeUsers[userId].socket.emit(event, products)
     }
   }
-  broadCast (data, event = 'auction') {
+  _broadCastToAuctionRoom (data, event = 'auction') {
     if (this.io) {
-      // console.log('broadcast', event, JSON.stringify(data))
+      console.log('broadcast', event)
       this.io.to('auction_room').emit(event, data)
     }
   }
   start () {
-    // console.log('Initializing.... REAL: ' + process.env.REAL_API)
+    console.log('Initializing....')
     let self = this
     let service = new ProductService()
     let now = parseInt(new Date().getTime() / 1000)
@@ -159,19 +165,18 @@ class AuctionBot {
                 num: 1,
                 end_at: bids[0].placed_at + self._getRoundTime(p, 1)
               }
-            } else if (self.auctionConfigs['auto_start']) {
-              p.round = {
-                bidder: 0,
-                bid_price: 0,
-                num: 1,
-                end_at: now + self._getRoundTime(p, 1)
-              }
             }
             self.products[p.id] = p
             return p
           })
         })
         Promise.all(queries).then(ps => {
+          console.log(`
+Initialized. Start Processing Auctions.
+          Configs[${JSON.stringify(self.auctionConfigs)}] 
+          Products[${Object.keys(self.products).length}] 
+          Users[${Object.keys(self.userDB).length}]`)
+          self._broadCastToAuctionRoom(Object.values(self.products))
           self._startTicker()
         })
       })
@@ -182,7 +187,7 @@ class AuctionBot {
   }
   _startTicker () {
     let self = this
-    setTimeout(() => {
+    this.tickerHandler = setTimeout(() => {
       self._proccessAuction(self._startTicker.bind(this))
     }, 1000)
   }
@@ -209,6 +214,15 @@ class AuctionBot {
         needBroadcast = true
         // console.log('changeStatus')
       }
+      if (self.auctionConfigs['auto_start'] && !product.round) {
+        product.round = {
+          bidder: 0,
+          bid_price: 0,
+          num: 1,
+          end_at: now + self._getRoundTime(product, 1)
+        }
+        needBroadcast = true
+      }
       // if round is activating
       if (product.round) {
         // if this round is end, go to next round
@@ -216,7 +230,7 @@ class AuctionBot {
           product.round.num++
           // console.log('change round')
           needBroadcast = true
-        } else {
+        } else if (!needBroadcast) {
           return
         }
         // if next round has life time
@@ -250,7 +264,7 @@ class AuctionBot {
     })
     if (needBroadCastProducts.length > 0) {
       // console.log('needBroadCastProducts', needBroadCastProducts.length)
-      this.broadCast(needBroadCastProducts)
+      this._broadCastToAuctionRoom(needBroadCastProducts)
       needBroadCastProducts = []
     }
     callback()

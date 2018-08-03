@@ -1,3 +1,3 @@
 module.exports = {
-  secret: 'thisisjwtsecretkeyanddonotshow'
+  secret: 'punch_auctionthisisjwtsecretkeyanddonotshow'
 }

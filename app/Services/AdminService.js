@@ -1,6 +1,6 @@
 import {AuctionConfigs} from '../Models'
 import autoBind from 'auto-bind'
-
+import AuctionBot from '../Bot/AuctionBot'
 class AdminService {
   constructor () {
     autoBind(this)
@@ -14,6 +14,17 @@ class AdminService {
         result[config.key] = config.value
       })
       return result
+    })
+  }
+
+  post (params) {
+    console.log(params)
+    let funcs = Object.keys(params).map(key => {
+      return AuctionConfigs.update({value: params[key]}, {where: {key: key}})
+    })
+    return Promise.all(funcs).then(updatedConfigs => {
+      AuctionBot.restart()
+      return this.get()
     })
   }
 }

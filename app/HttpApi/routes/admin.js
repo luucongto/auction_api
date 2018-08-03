@@ -24,5 +24,22 @@ router.get('/apisetting', [passport.authenticate('jwt'), verifyAdmin], (req, res
     })
   })
 })
+router.post('/apisetting', [passport.authenticate('jwt'), verifyAdmin], (req, res, next) => {
+  let params = {}
+  if (req.body.auto_start !== undefined) params.auto_start = req.body.auto_start
+  if (req.body.multi_auction_same_time) params.multi_auction_same_time = parseInt(req.body.multi_auction_same_time)
+  AdminService.post(params).then(configs => {
+    res.send({
+      success: true,
+      data: configs
+    })
+  }).catch(error => {
+    console.error(error)
+    res.send({
+      success: false,
+      error: error.message
+    })
+  })
+})
 
 module.exports = router
