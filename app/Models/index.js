@@ -53,6 +53,7 @@ const Products = sequelize.define('product', {
   round_time_2: {type: Sequelize.INTEGER, default: 60},
   round_time_3: {type: Sequelize.INTEGER, default: 30},
   status: {type: Sequelize.STRING, default: 'waiting'},
+  seller_id: Sequelize.INTEGER,
   winner_id: Sequelize.INTEGER,
   win_price: Sequelize.INTEGER
 })
