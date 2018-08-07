@@ -39,12 +39,17 @@ class AuctionBot {
           let bidPrice = parseInt(params.bid_price)
           let isValidBid = false
           let bids = product.bids || []
+          let msg = 'Invalid Bid'
           if (bids.length) {
             if ((bids[0].bid_price + product.step_price) <= bidPrice) {
               isValidBid = true
+            } else {
+              msg = 'Your price is invalid'
             }
           } else if (bidPrice >= product.start_price) {
             isValidBid = true
+          } else {
+            msg = 'Your price is invalid'
           }
           if (isValidBid) {
             if (product.round) {
@@ -80,6 +85,7 @@ class AuctionBot {
               self._broadCastToAuctionRoom([self.products[params.product_id]])
             })
           } else {
+            self._emitUser(data.id, {type: 'error', msg: msg}, 'server_message')
             self._broadCastToAuctionRoom([self.products[params.product_id]])
           }
           break
