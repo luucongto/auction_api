@@ -1,5 +1,6 @@
-import {Products, ProductImages} from '../Models'
+import {Products, ProductImages, User} from '../Models'
 import autoBind from 'auto-bind'
+import underscore from 'underscore'
 import {Op} from 'sequelize'
 class ProductService {
   constructor (userId) {
@@ -62,14 +63,45 @@ class ProductService {
       })
     })
   }
+  getAdmin (params) {
+    console.log(params)
+    return Products.findAll({
+      where: {
+        status: 'finished',
+        updated_at: {
+          [Op.gte] : params.updated_at || '0'
+        }
+      },
+      order: [
+        ['updated_at', 'desc']
+      ],
+    }).then(products => {
+      let userIds = products.map(product=> product.winner_id)
+      userIds = underscore.uniq(userIds)
+      return User.findAll().then(users => {
+        let userDbs = {}
+        users.forEach(user => {
+          userDbs[user.id] = user.get()
+        })
+        let result = products.map(product => {
+          let p = product.get()
+          let user = userDbs[product.winner_id] || {}
+          p.seller_name = userDbs[product.seller_id] ? userDbs[product.seller_id].name : '' 
+          p.user_name = user.name || ''
+          p.user_email = user.email || ''
+          return p
+        })
+        return result
+      })
+    })
+  }
   getSold (page = 0) {
-    console.log(page)
     return Products.findAll({
       where: {
         status: 'finished'
       },
       order: [
-        ['updatedAt', 'desc']
+        ['updated_at', 'desc']
       ],
       offset: page * 20,
       limit: 20

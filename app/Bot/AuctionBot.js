@@ -285,6 +285,7 @@ Initialized. Start Processing Auctions.
           product.winner_id = product.round.bidder
           product.win_price = product.round.bid_price
           Products.update({
+            updated_at: now,
             status: 'finished',
             winner_id: product.round.bidder,
             win_price: product.round.bid_price

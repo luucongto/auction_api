@@ -27,6 +27,23 @@ router.get('/all', [passport.authenticate('jwt')], (req, res, next) => {
     })
   })
 })
+
+router.get('/admin', [passport.authenticate('jwt'), verifyAdmin], (req, res, next) => {
+  let service = new ProductService(req)
+  service.getAdmin(req.query).then(notices => {
+    res.send({
+      success: true,
+      data: notices
+    })
+  }).catch(error => {
+    console.error(error)
+    res.send({
+      success: false,
+      error: error.message
+    })
+  })
+})
+
 router.get('/sold', [passport.authenticate('jwt')], (req, res, next) => {
   let service = new ProductService(req)
   service.getSold(req.query.page || 0).then(products => {
