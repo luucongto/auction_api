@@ -8,10 +8,10 @@ services:
       - ./db:/var/lib/mysql
       - ./mysql_passwd:/run/secrets/mysql_passwd
     environment:
-      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
-      MYSQL_DATABASE: auction
-      MYSQL_USER: auction
-      MYSQL_PASSWORD_FILE: /run/secrets/mysql_passwd
+      - MYSQL_RANDOM_ROOT_PASSWORD=yes
+      - MYSQL_DATABASE=auction
+      - MYSQL_USER=auction
+      - MYSQL_PASSWORD_FILE=/run/secrets/mysql_passwd
     restart: always
   nodejs:
     container_name: pvnauction_nodejs

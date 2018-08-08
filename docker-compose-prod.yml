@@ -8,30 +8,22 @@ services:
       - ./db:/var/lib/mysql
       - ./mysql_passwd:/run/secrets/mysql_passwd
     environment:
-      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
-      MYSQL_DATABASE: auction
-      MYSQL_USER: auction
-      MYSQL_PASSWORD_FILE: /run/secrets/mysql_passwd
+      - MYSQL_RANDOM_ROOT_PASSWORD=yes
+      - MYSQL_DATABASE=auction
+      - MYSQL_USER=auction
+      - MYSQL_PASSWORD_FILE=/run/secrets/mysql_passwd
+    ports:
+      - "9306:3306"
     restart: always
   nodejs:
     container_name: pvnauction_nodejs
     image: node:8
-    user: "node"
     working_dir: /home/node/app
-    environment:
-      - VIRTUAL_HOST=socket.auction.punch.local
-      - VIRTUAL_PORT=3000
-      - NETWORK_ACCESS=internal
     volumes:
       - ./:/home/node/app
     command: ["/bin/bash", -c, "npm install && npm start"]
+    ports:
+      - "9300:3000"
     depends_on:
       - db
     restart: always
-    networks:
-      - reverse-proxy
-
-networks:
-  reverse-proxy:
-    external:
-      name: reverse-proxy
