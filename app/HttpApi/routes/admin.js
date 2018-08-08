@@ -26,6 +26,7 @@ router.get('/apisetting', [passport.authenticate('jwt'), verifyAdmin], (req, res
 })
 router.post('/apisetting', [passport.authenticate('jwt'), verifyAdmin], (req, res, next) => {
   let params = {}
+  if (req.body.max_bid !== undefined) params.max_bid = parseInt(req.body.max_bid)
   if (req.body.auto_start !== undefined) params.auto_start = req.body.auto_start
   if (req.body.multi_auction_same_time) params.multi_auction_same_time = parseInt(req.body.multi_auction_same_time)
   AdminService.post(params).then(configs => {

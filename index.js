@@ -96,7 +96,15 @@ AuctionBot.setIo(io)
 let connectCounter = 0
 io.on('connection', (socket) => {
   socket.on('connect', function () { connectCounter++ })
-  socket.on('disconnect', function () { connectCounter-- })
+  socket.on('disconnect', function () {
+    connectCounter-- 
+    if(socket.request.user){
+      AuctionBot.removeUser({
+        id: socket.request.user.id,
+        socket: socket
+      })
+    }
+  })
   if (socket.request.user) {
     socket.join('auction_room', () => {
       connectCounter++

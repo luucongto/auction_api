@@ -1,6 +1,6 @@
-import {Products, ProductImages, AuctionBids, AuctionConfigs} from '../Models'
+import {Products, ProductImages} from '../Models'
 import autoBind from 'auto-bind'
-
+import {Op} from 'sequelize'
 class ProductService {
   constructor (userId) {
     this.userId = userId
@@ -38,7 +38,58 @@ class ProductService {
       })
     })
   }
-
+  getSelling () {
+    return Products.findAll({
+      where: {
+        status: {
+          [Op.in]: ['bidding', 'waiting']
+        }
+      }
+    }).then(products => {
+      let queries = products.map(product => {
+        return ProductImages.findAll({
+          where: {
+            product_id: product.id
+          }
+        }).then(images => {
+          let prod = product.get()
+          prod.images = images
+          return prod
+        })
+      })
+      return Promise.all(queries).then(ps => {
+        return ps
+      })
+    })
+  }
+  getSold (page = 0) {
+    console.log(page)
+    return Products.findAll({
+      where: {
+        status: 'finished'
+      },
+      order: [
+        ['updatedAt', 'desc']
+      ],
+      offset: page * 20,
+      limit: 20
+    }).then(products => {
+      let queries = products.map(product => {
+        return ProductImages.findAll({
+          where: {
+            product_id: product.id
+          }
+        }).then(images => {
+          let prod = product.get()
+          prod.images = images
+          return prod
+        })
+      })
+      return Promise.all(queries).then(ps => {
+        return ps
+      })
+    })
+  }
   getWinner (userId) {
     return Products.findAll({
       where: {

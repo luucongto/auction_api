@@ -2,6 +2,8 @@ import ProductService from '../Services/ProductService'
 import { AuctionBids, AuctionConfigs, Products, User } from '../Models'
 import {Op} from 'sequelize'
 import underscore from 'underscore'
+
+const MAX_BID = 1000000000 // 1bil
 class AuctionBot {
   constructor () {
     // Authenticated client, can make signed calls
@@ -17,14 +19,23 @@ class AuctionBot {
   setIo (io) {
     this.io = io
   }
+  removeUser (data) {
+    let userId = data.id
+    if (this.activeUsers[userId] && this.activeUsers[userId].socket.length) {
+      let index = this.activeUsers[userId].socket.indexOf(data.socket)
+      if (index >= 0) {
+        this.activeUsers[userId].socket.splice(index, 1)
+      }
+    }
+  }
   setUser (data) {
     let self = this
     let userId = data.id
     if (this.activeUsers[userId]) {
-      this.activeUsers[userId].socket = data.socket
+      this.activeUsers[userId].socket.push(data.socket)
     } else {
       this.activeUsers[userId] = {
-        socket: data.socket,
+        socket: [data.socket],
         api: null
       }
     }
@@ -35,21 +46,38 @@ class AuctionBot {
         case 'placeBid':
           let now = parseInt(new Date().getTime() / 1000)
           let product = self.products[params.product_id]
-          if (!product || product.start_at >= now || product.finished) return
+          if (!product || product.start_at >= now) {
+            self._emitUser(data.id, {type: 'error', msg: 'Product is not valid!!!'}, 'server_message')
+            self._emitUser(data.id, {success: false, productId: product.id}, 'bid_message')
+            return
+          } else if (product.finished) {
+            self._emitUser(data.id, {type: 'error', msg: 'Product has been sold!!!'}, 'server_message')
+            self._emitUser(data.id, {success: false, productId: product.id}, 'bid_message')
+            return
+          }
           let bidPrice = parseInt(params.bid_price)
+          bidPrice = bidPrice - bidPrice % product.step_price
+          if (bidPrice > (self.auctionConfigs['max_bid'] || MAX_BID)) {
+            self._emitUser(data.id, { type: 'error', msg: 'You bidded too big!!! Max:' + (self.auctionConfigs['max_bid'] || MAX_BID) }, 'server_message')
+            self._emitUser(data.id, {success: false, productId: product.id}, 'bid_message')
+            return
+          }
           let isValidBid = false
           let bids = product.bids || []
           let msg = 'Invalid Bid'
           if (bids.length) {
-            if ((bids[0].bid_price + product.step_price) <= bidPrice) {
+            let maxPrice = bids[0].bid_price + product.step_price
+            console.log(userId, product.id, bidPrice, maxPrice)
+            if (maxPrice <= bidPrice) {
               isValidBid = true
             } else {
-              msg = 'Your price is invalid'
+              msg = 'You should bid at least ' + maxPrice
             }
           } else if (bidPrice >= product.start_price) {
+            console.log(userId, product.id, bidPrice)
             isValidBid = true
           } else {
-            msg = 'Your price is invalid'
+            msg = 'You should bid at least ' + product.start_price
           }
           if (isValidBid) {
             if (product.round) {
@@ -68,7 +96,7 @@ class AuctionBot {
             bids.unshift({
               user_id: data.id,
               product_id: params.product_id,
-              bid_price: params.bid_price,
+              bid_price: bidPrice,
               placed_at: now
             })
             if (product.bidders.indexOf(data.id) < 0) {
@@ -79,14 +107,16 @@ class AuctionBot {
             AuctionBids.create({
               user_id: data.id,
               product_id: params.product_id,
-              bid_price: params.bid_price,
+              bid_price: bidPrice,
               placed_at: now
             }).then(bid => {
+              self._emitUser(data.id, {success: true, productId: product.id}, 'bid_message')
               self._broadCastToAuctionRoom([self.products[params.product_id]])
             })
           } else {
+            console.warn('wrong bid', data.id, params)
             self._emitUser(data.id, {type: 'error', msg: msg}, 'server_message')
-            self._broadCastToAuctionRoom([self.products[params.product_id]])
+            self._emitUser(data.id, {success: false, productId: product.id}, 'bid_message')
           }
           break
         case 'refresh':
@@ -121,8 +151,9 @@ class AuctionBot {
     if (!userId) {
       console.error('Emit order null userid')
     }
-    if (this.activeUsers[userId] && this.activeUsers[userId].socket) {
-      this.activeUsers[userId].socket.emit(event, products)
+    if (this.activeUsers[userId] && this.activeUsers[userId].socket.length) {
+      console.log(new Date(), userId, event, JSON.stringify(products).substring(0, 100))
+      this.activeUsers[userId].socket.forEach(socket => socket.emit(event, products))
     }
   }
   _broadCastToAuctionRoom (data, event = 'auction') {
@@ -150,7 +181,7 @@ class AuctionBot {
         self.auctionConfigs[config.key] = config.value
       })
       // console.log('Config:', self.auctionConfigs)
-      service.getAll().then(products => {
+      service.getSelling().then(products => {
         let queries = products.map(product => {
           return AuctionBids.findAll({
             where: {

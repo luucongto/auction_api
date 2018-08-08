@@ -27,7 +27,22 @@ router.get('/all', [passport.authenticate('jwt')], (req, res, next) => {
     })
   })
 })
-
+router.get('/sold', [passport.authenticate('jwt')], (req, res, next) => {
+  let service = new ProductService(req)
+  service.getSold(req.query.page || 0).then(products => {
+    console.log('page', req.query.page, 'products', products.length)
+    res.send({
+      success: true,
+      data: products
+    })
+  }).catch(error => {
+    console.error(error)
+    res.send({
+      success: false,
+      error: error.message
+    })
+  })
+})
 router.get('/:id', [passport.authenticate('jwt')], (req, res, next) => {
   let service = new ProductService(req)
   service.get(req.params.id).then(products => {
