@@ -6,23 +6,24 @@ services:
     image: mysql:5.6
     volumes:
       - ./db:/var/lib/mysql
-      - ./mysql_passwd:/run/secrets/mysql_passwd
+      - ./docker/mysql_passwd:/run/secrets/mysql_passwd
     environment:
       - MYSQL_RANDOM_ROOT_PASSWORD=yes
       - MYSQL_DATABASE=auction
       - MYSQL_USER=auction
       - MYSQL_PASSWORD_FILE=/run/secrets/mysql_passwd
+    ports:
+      - "9306:3306"
     restart: always
   nodejs:
     container_name: pvnauction_nodejs
     image: node:8
-    user: "node"
     working_dir: /home/node/app
     volumes:
       - ./:/home/node/app
-    ports:
-      - "3000:3000"
     command: ["/bin/bash", -c, "npm install && npm start"]
+    ports:
+      - "9300:3000"
     depends_on:
       - db
     restart: always
