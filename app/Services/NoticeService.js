@@ -10,7 +10,8 @@ class NoticeService {
     return Notices.findAll({
       where: {
         start_at: {[Op.lte]: now}
-      }
+      },
+      order: [['start_at', 'desc']]
     }).then(notices => {
       let result = []
       notices.forEach(element => {
@@ -21,7 +22,9 @@ class NoticeService {
     })
   }
   getAdmin () {
-    return Notices.findAll().then(notices => {
+    return Notices.findAll({
+      order: [['start_at', 'desc']]
+    }).then(notices => {
       let result = []
       notices.forEach(element => {
         let notice = element.get()

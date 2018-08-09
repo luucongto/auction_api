@@ -124,6 +124,37 @@ class AuctionBot {
           break
       }
     })
+
+    data.socket.on('seller', params => {
+      let service = new ProductService()
+      switch (params.command) {
+        case 'seller_get':
+          service.getProductsBySeller(data.id).then(result => {
+            self._emitUser(data.id, {success: true, products: result}, 'seller_message')
+          })
+          break
+        case 'update':
+          params.user_id = data.id
+          service.update(params.id, params).then(result => {
+            self._emitUser(data.id, {success: true, msg: `Update ID[${params.id}] successfully!!!`, product: result[0]}, 'seller_message')
+            self.restart()
+          }).catch(error => {
+            console.error(error)
+            self._emitUser(data.id, {success: false, msg: `Unauthorized`}, 'seller_message')
+          })
+          break
+        case 'destroy': {
+          service.destroy(params.id, data.id).then(result => {
+            self._emitUser(data.id, {success: true, msg: `Deleted ID[${params.id}] successfully!!!`, destroy: params.id}, 'seller_message')
+            self.restart()
+          }).catch(error => {
+            console.error(error)
+            self._emitUser(data.id, {success: false, msg: `Unauthorized`}, 'seller_message')
+          })
+          break
+        }
+      }
+    })
   }
   restart () {
     this.activeAuctions = []

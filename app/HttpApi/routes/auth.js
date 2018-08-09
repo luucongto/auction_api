@@ -24,6 +24,7 @@ var sendToken = function (req, res) {
     token: req.token,
     id: req.user.id,
     name: req.user.name,
+    isSeller: req.user.role === 'seller' || req.user.role === 'admin',
     isAdmin: req.user.role === 'admin'
   })
 }
