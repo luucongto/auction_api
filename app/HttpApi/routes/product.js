@@ -34,7 +34,7 @@ router.get('/all', [passport.authenticate('jwt')], (req, res, next) => {
   })
 })
 
-router.get('/admin', [passport.authenticate('jwt'), verifyAdmin], (req, res, next) => {
+router.get('/admin', [passport.authenticate('jwt'), verifySeller], (req, res, next) => {
   let service = new ProductService(req)
   service.getSoldProductForSeller(req.query).then(notices => {
     res.send({
@@ -50,15 +50,9 @@ router.get('/admin', [passport.authenticate('jwt'), verifyAdmin], (req, res, nex
   })
 })
 
-router.get('/sold', [passport.authenticate('jwt'), verifySeller], (req, res, next) => {
-  let queries = {page: req.query.page || 0}
-  if (req.user.role === 'seller') {
-    queries.userId = req.user.id
-  } else if (req.body.userId) {
-    queries.userId = req.req.body.userId
-  }
+router.get('/sold', [passport.authenticate('jwt')], (req, res, next) => {
   let service = new ProductService(req)
-  service.getSold(queries).then(products => {
+  service.getSold(req.query.page || 0).then(products => {
     console.log('page', req.query.page, 'products', products.length)
     res.send({
       success: true,
