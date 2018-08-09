@@ -21,3 +21,22 @@ Run normal
 
     npm start
 
+# Docker
+
+##### Create symlink to the related docker compose file:
+
+Dev: `ln -s docker/docker-compose-dev.yml docker-compose.yml`
+
+Prod: `ln -s docker/docker-compose-prod.yml docker-compose.yml`
+
+##### Create mysql_passwd file to store mysql password
+
+`echo "passwd" > docker/mysql_passwd`
+
+##### Create db dir to store mysql data
+
+`mkdir db`
+
+##### Start docker
+
+`sudo docker-compose up`
