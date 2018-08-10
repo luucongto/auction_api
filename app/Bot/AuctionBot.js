@@ -15,6 +15,8 @@ class AuctionBot {
     this.activeAuctions = []
     this.auctionConfigs = {}
     this.tickerHandler = false
+    this.bidQueue = []
+    this.service = new ProductService()
   }
   setIo (io) {
     this.io = io
@@ -55,69 +57,17 @@ class AuctionBot {
             self._emitUser(data.id, {success: false, productId: product.id}, 'bid_message')
             return
           }
-          let bidPrice = parseInt(params.bid_price)
-          bidPrice = bidPrice - bidPrice % product.step_price
-          if (bidPrice > (self.auctionConfigs['max_bid'] || MAX_BID)) {
+          params.bid_price = parseInt(params.bid_price)
+          params.bid_price = params.bid_price - params.bid_price % product.step_price
+          if (params.bid_price > (self.auctionConfigs['max_bid'] || MAX_BID)) {
             self._emitUser(data.id, { type: 'error', msg: 'You bidded too big!!! Max:' + (self.auctionConfigs['max_bid'] || MAX_BID) }, 'server_message')
             self._emitUser(data.id, {success: false, productId: product.id}, 'bid_message')
             return
           }
-          let isValidBid = false
-          let bids = product.bids || []
-          let msg = 'Invalid Bid'
-          if (bids.length) {
-            let maxPrice = bids[0].bid_price + product.step_price
-            console.log(userId, product.id, bidPrice, maxPrice)
-            if (maxPrice <= bidPrice) {
-              isValidBid = true
-            } else {
-              msg = 'You should bid at least ' + maxPrice
-            }
-          } else if (bidPrice >= product.start_price) {
-            console.log(userId, product.id, bidPrice)
-            isValidBid = true
-          } else {
-            msg = 'You should bid at least ' + product.start_price
-          }
-          if (isValidBid) {
-            if (product.round) {
-              product.round.end_at = now + this._getRoundTime(product, 1)
-              product.round.num = 1
-              product.round.bidder = userId
-              product.round.bid_price = bidPrice
-            } else {
-              product.round = {
-                num: 1,
-                bidder: userId,
-                bid_price: bidPrice,
-                end_at: now + this._getRoundTime(product, 1)
-              }
-            }
-            bids.unshift({
-              user_id: data.id,
-              product_id: params.product_id,
-              bid_price: bidPrice,
-              placed_at: now
-            })
-            if (product.bidders.indexOf(data.id) < 0) {
-              product.bidders.push(data.id)
-            }
-            product.bids = bids.slice(0, 4)
-            self.products[params.product_id] = product
-            AuctionBids.create({
-              user_id: data.id,
-              product_id: params.product_id,
-              bid_price: bidPrice,
-              placed_at: now
-            }).then(bid => {
-              self._emitUser(data.id, {success: true, productId: product.id}, 'bid_message')
-              self._broadCastToAuctionRoom([self.products[params.product_id]])
-            })
-          } else {
-            console.warn('wrong bid', data.id, params)
-            self._emitUser(data.id, {type: 'error', msg: msg}, 'server_message')
-            self._emitUser(data.id, {success: false, productId: product.id}, 'bid_message')
-          }
+          params.userId = userId
+          self.bidQueue.push(params)
+          // will process bid on ticker
+
           break
         case 'refresh':
           self._refresh(data.id)
@@ -126,31 +76,33 @@ class AuctionBot {
     })
 
     data.socket.on('seller', params => {
-      let service = new ProductService()
       switch (params.command) {
         case 'seller_get':
-          service.getProductsBySeller(data.id).then(result => {
+          self.service.getProductsBySeller(data.id).then(result => {
             self._emitUser(data.id, {success: true, products: result}, 'seller_message')
           })
           break
         case 'update':
           params.user_id = data.id
-          service.update(params.id, params).then(result => {
-            self._emitUser(data.id, {success: true, msg: `Update ID[${params.id}] successfully!!!`, product: result[0]}, 'seller_message')
-            self.restart()
+          self.service.update(params.id, params).then(result => {
+            let product = result[0]
+            self._addProductToQueue(product)
+            self._broadCastToAuctionRoom([product])
+            self._emitUser(data.id, {success: true, msg: `Update ID[${params.id}] successfully!!!`, product}, 'seller_message')
           }).catch(error => {
             console.error(error)
             self._emitUser(data.id, {success: false, msg: `Unauthorized`}, 'seller_message')
           })
           break
         case 'destroy': {
-          service.destroy(params.id, data.id).then(result => {
-            self._emitUser(data.id, {success: true, msg: `Deleted ID[${params.id}] successfully!!!`, destroy: params.id}, 'seller_message')
-            self.restart()
-          }).catch(error => {
-            console.error(error)
-            self._emitUser(data.id, {success: false, msg: `Unauthorized`}, 'seller_message')
-          })
+          // Temporary disable. Should not delete, just update to finished
+          // service.destroy(params.id, data.id).then(result => {
+          //   self._emitUser(data.id, {success: true, msg: `Deleted ID[${params.id}] successfully!!!`, destroy: params.id}, 'seller_message')
+          //   self.restart()
+          // }).catch(error => {
+          //   console.error(error)
+          //   self._emitUser(data.id, {success: false, msg: `Unauthorized`}, 'seller_message')
+          // })
           break
         }
       }
@@ -158,6 +110,7 @@ class AuctionBot {
   }
   restart () {
     this.activeAuctions = []
+    this.bidQueue = []
     this.products = {}
     clearTimeout(this.tickerHandler)
     this.start()
@@ -177,7 +130,68 @@ class AuctionBot {
     }
     self._emitUser(userId, self.userDB, 'users')
   }
-
+  _processABid (params) {
+    let self = this
+    let now = parseInt(new Date().getTime() / 1000)
+    let product = self.products[params.product_id]
+    let isValidBid = false
+    let bids = product.bids || []
+    let msg = 'Invalid Bid'
+    let userId = params.userId
+    if (bids.length) {
+      let maxPrice = bids[0].bid_price + product.step_price
+      if (maxPrice <= params.bid_price) {
+        isValidBid = true
+      } else {
+        msg = 'You should bid at least ' + maxPrice
+      }
+    } else if (params.bid_price >= product.start_price) {
+      console.log(userId, product.id, params.bid_price)
+      isValidBid = true
+    } else {
+      msg = 'You should bid at least ' + product.start_price
+    }
+    if (isValidBid) {
+      if (product.round) {
+        product.round.end_at = now + this._getRoundTime(product, 1)
+        product.round.num = 1
+        product.round.bidder = userId
+        product.round.bid_price = params.bid_price
+      } else {
+        product.round = {
+          num: 1,
+          bidder: userId,
+          bid_price: params.bid_price,
+          end_at: now + this._getRoundTime(product, 1)
+        }
+      }
+      bids.unshift({
+        user_id: userId,
+        product_id: params.product_id,
+        bid_price: params.bid_price,
+        placed_at: now
+      })
+      if (product.bidders.indexOf(userId) < 0) {
+        product.bidders.push(userId)
+      }
+      product.bids = bids.slice(0, 4)
+      self.products[params.product_id] = product
+      self._emitUser(userId, {success: true, productId: product.id}, 'bid_message')
+      self._broadCastToAuctionRoom([self.products[params.product_id]])
+      AuctionBids.create({
+        user_id: userId,
+        product_id: params.product_id,
+        bid_price: params.bid_price,
+        placed_at: now
+      }).then(bid => {
+        console.warn('BID PLACED', JSON.stringify(bid.get()))
+      })
+    } else {
+      console.warn('wrong bid', userId, params)
+      self._emitUser(userId, {type: 'error', msg: msg}, 'server_message')
+      self._emitUser(userId, {success: false, productId: product.id}, 'bid_message')
+    }
+  }
   _emitUser (userId, products, event = 'auction') {
     if (!userId) {
       console.error('Emit order null userid')
@@ -196,8 +210,6 @@ class AuctionBot {
   start () {
     console.log('Initializing....')
     let self = this
-    let service = new ProductService()
-    let now = parseInt(new Date().getTime() / 1000)
     User.findAll().then(users => {
       users.forEach(user => {
         self.userDB[user.id] = {
@@ -211,33 +223,9 @@ class AuctionBot {
       result.forEach(config => {
         self.auctionConfigs[config.key] = config.value
       })
-      // console.log('Config:', self.auctionConfigs)
-      service.getSelling().then(products => {
+      self.service.botGetSelling().then(products => {
         let queries = products.map(product => {
-          return AuctionBids.findAll({
-            where: {
-              product_id: product.id
-            },
-            order: [
-              ['bid_price', 'desc']
-            ]
-          }).then(bids => {
-            let p = product
-            p.bidders = []
-            if (bids.length) {
-              p.bidders = underscore.uniq(bids.map(bid => bid.user_id))
-              p.bids = bids.slice(0, 4)
-
-              p.round = {
-                bidder: bids[0].user_id,
-                bid_price: bids[0].bid_price,
-                num: 1,
-                end_at: bids[0].placed_at + self._getRoundTime(p, 1)
-              }
-            }
-            self.products[p.id] = p
-            return p
-          })
+          return self._addProductToQueue(product)
         })
         Promise.all(queries).then(ps => {
           console.log(`
@@ -251,6 +239,35 @@ Initialized. Start Processing Auctions.
       })
     })
   }
+
+  _addProductToQueue (product) {
+    let self = this
+    return AuctionBids.findAll({
+      where: {
+        product_id: product.id
+      },
+      order: [
+        ['bid_price', 'desc']
+      ]
+    }).then(bids => {
+      let p = product
+      p.bidders = []
+      if (bids.length) {
+        p.bidders = underscore.uniq(bids.map(bid => bid.user_id))
+        p.bids = bids.slice(0, 4)
+
+        p.round = {
+          bidder: bids[0].user_id,
+          bid_price: bids[0].bid_price,
+          num: 1,
+          end_at: bids[0].placed_at + self._getRoundTime(p, 1)
+        }
+      }
+      console.log('Add Product:', p.id, p.name, p.ams_code)
+      self.products[p.id] = p
+      return p
+    })
+  }
   _getRoundTime (product, num) {
     return product['round_time_' + num] || this.auctionConfigs['round_time_' + num]
   }
@@ -260,14 +277,27 @@ Initialized. Start Processing Auctions.
       self._proccessAuction(self._startTicker.bind(this))
     }, 1000)
   }
+  _processBids () {
+    while (this.bidQueue.length) {
+      let bid = this.bidQueue.shift()
+      this._processABid(bid)
+    }
+  }
   _proccessAuction (callback) {
     let self = this
     let now = parseInt(new Date().getTime() / 1000)
     let needBroadCastProducts = []
-    Object.values(this.products).forEach(product => {
-      if (product.start_at > now || product.status === 'finished') {
+    this._processBids()
+    Object.keys(this.products).forEach(productId => {
+      let product = self.products[productId]
+
+      if (!product || product.start_at > now) {
         // not started or done
-        // can validated data
+        return
+      }
+      if (product.status === 'finished') {
+        // remove from mem
+        delete self.products[product.id]
         return
       }
       // if single auction and there is ongoing auction
@@ -277,11 +307,18 @@ Initialized. Start Processing Auctions.
       }
 
       let needBroadcast = false
-      if (product.status === 'waiting') {
+      if (product.status === 'bidding' && self.activeAuctions.indexOf(product.id) < 0) {
+        self.activeAuctions.push(product.id)
+      } else if (product.status === 'waiting') {
         self.activeAuctions.push(product.id)
         product.status = 'bidding'
+        Products.update({
+          updated_at: now,
+          status: 'bidding'
+        }, {where: {
+          id: product.id
+        }})
         needBroadcast = true
-        // console.log('changeStatus')
       }
       if (self.auctionConfigs['auto_start'] && !product.round) {
         product.round = {

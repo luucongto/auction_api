@@ -62,13 +62,16 @@ class ProductService {
     })
   }
 
-  getSelling () {
+  botGetSelling () {
     return Products.findAll({
       where: {
         status: {
           [Op.in]: ['bidding', 'waiting']
         }
-      }
+      },
+      order: [
+        ['start_at', 'asc']
+      ]
     }).then(products => {
       let queries = products.map(product => {
         return ProductImages.findAll({
@@ -164,6 +167,7 @@ class ProductService {
       return {products: result}
     })
   }
+
   update (id, params) {
     return User.findById(params.user_id).then(user => {
       if (user.role === 'seller' || user.role === 'admin') {
