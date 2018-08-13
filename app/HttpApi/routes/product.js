@@ -1,8 +1,20 @@
 
 import passport from 'passport'
 import ProductService from '../../Services/ProductService'
+import multer from 'multer'
+import fs from 'fs'
+var XLSX = require('xlsx')
 var express = require('express')
 var router = express.Router()
+
+const storage = multer.diskStorage({
+  destination: './files',
+  filename (req, file, cb) {
+    cb(null, `${new Date()}-${file.originalname}`)
+  }
+})
+
+const upload = multer({ storage })
 
 let verifyAdmin = (req, res, next) => {
   if (req.user.role === 'admin') {
@@ -18,23 +30,23 @@ let verifySeller = (req, res, next) => {
     res.send(401)
   }
 }
-router.get('/all', [passport.authenticate('jwt')], (req, res, next) => {
-  let service = new ProductService(req)
-  service.getAll().then(products => {
-    res.send({
-      success: true,
-      data: products
-    })
-  }).catch(error => {
-    console.error(error)
-    res.send({
-      success: false,
-      error: error.message
-    })
-  })
-})
+// router.get('/all', [passport.authenticate('jwt')], (req, res, next) => {
+//   let service = new ProductService(req)
+//   service.getAll().then(products => {
+//     res.send({
+//       success: true,
+//       data: products
+//     })
+//   }).catch(error => {
+//     console.error(error)
+//     res.send({
+//       success: false,
+//       error: error.message
+//     })
+//   })
+// })
 
-router.get('/admin', [passport.authenticate('jwt'), verifySeller], (req, res, next) => {
+router.get('/seller', [passport.authenticate('jwt'), verifySeller], (req, res, next) => {
   let service = new ProductService(req)
   service.getSoldProductForSeller(req.query).then(notices => {
     res.send({
@@ -47,6 +59,32 @@ router.get('/admin', [passport.authenticate('jwt'), verifySeller], (req, res, ne
       success: false,
       error: error.message
     })
+  })
+})
+
+router.post('/import', [passport.authenticate('jwt'), verifySeller, upload.single('file')], (req, res, next) => {
+  const file = req.file // file passed from client
+  console.log(file)
+  try {
+    var workbook = XLSX.readFile(file.path)
+  } catch (e) {
+    console.error(e)
+  }
+
+  let service = new ProductService(req)
+  service.import(workbook, req.user.id).then(products => {
+    res.send({
+      success: true,
+      data: products
+    })
+    fs.unlink(file.path)
+  }).catch(error => {
+    console.error(error)
+    res.send({
+      success: false,
+      error: error.message
+    })
+    fs.unlink(file.path)
   })
 })
 

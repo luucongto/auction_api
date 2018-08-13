@@ -255,6 +255,66 @@ class ProductService {
       })
     })
   }
+  import (workbook, sellerId) {
+    let productWorksheet = workbook.Sheets['products']
+    let productImgWorkSheet = workbook.Sheets['product_images']
+    let productParams = []
+    let productImgs = {}
+    let self = this
+    for (var i = 2; productWorksheet[`A${i}`] && productWorksheet[`A${i}`].v; i++) {
+      try {
+        productParams.push({
+          req_id: productWorksheet[`A${i}`].v,
+          name: productWorksheet[`B${i}`].v,
+          category: productWorksheet[`C${i}`].v,
+          ams_code: productWorksheet[`D${i}`].v,
+          start_at: Math.floor(new Date(productWorksheet[`E${i}`].w).getTime() / 1000),
+          start_price: parseInt(productWorksheet[`F${i}`].v),
+          step_price: parseInt(productWorksheet[`G${i}`].v),
+          round_time_1: parseInt(productWorksheet[`H${i}`].v),
+          round_time_2: parseInt(productWorksheet[`I${i}`].v),
+          round_time_3: parseInt(productWorksheet[`J${i}`].v),
+          status: 'waiting',
+          seller_id: sellerId
+        })
+      } catch (e) {
+        console.error(i, e)
+      }
+    }
+    for (i = 2; productImgWorkSheet[`A${i}`] && productImgWorkSheet[`A${i}`].v; i++) {
+      try {
+        let pId = productImgWorkSheet[`A${i}`].v
+        if (!productImgs[pId]) {
+          productImgs[pId] = []
+        }
+        productImgs[pId].push({
+          product_id: productImgWorkSheet[`A${i}`].v,
+          src: productImgWorkSheet[`B${i}`].v,
+          caption: productImgWorkSheet[`C${i}`].v
+        })
+      } catch (e) {
+        console.error(i, e)
+      }
+    }
+    let creates = productParams.map(p => {
+      return Products.create(p).then(product => {
+        if (productImgs[p.req_id]) {
+          let imgs = productImgs[p.req_id].map(img => {
+            img.product_id = product.id
+            return img
+          })
+          return ProductImages.bulkCreate(imgs).then(() => {
+            return product
+          })
+        } else {
+          return product
+        }
+      })
+    })
+    return Promise.all(creates).then(() => {
+      return self.getProductsBySeller(sellerId)
+    })
+  }
 }
 
 module.exports = ProductService
