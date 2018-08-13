@@ -172,18 +172,20 @@ class ProductService {
     return User.findById(params.user_id).then(user => {
       if (user.role === 'seller' || user.role === 'admin') {
         return Products.findById(params.id).then(product => {
-          if (product.seller_id !== params.user_id) return {success: false, msg: 'Unauthorized'}
-          product.name = params.name
-          product.ams_code = params.ams_code
-          product.start_at = parseInt(params.start_at)
-          product.start_price = parseInt(params.start_price)
-          product.step_price = parseInt(params.step_price)
-          product.round_time_1 = parseInt(params.round_time_1)
-          product.round_time_2 = parseInt(params.round_time_2)
-          product.round_time_3 = parseInt(params.round_time_3)
-          return Promise.all([
-            product.save(),
-            ProductImages.findAll({
+          if (!product || product.status !== 'waiting') return new Error('Unauthorized!!! Product cannot be edited!!!')
+          if (user.role !== 'admin' && product.seller_id !== params.user_id) return new Error('Unauthorized')
+          if (params.name !== undefined) product.name = params.name
+          if (params.ams_code !== undefined) product.ams_code = params.ams_code
+          if (params.start_at !== undefined) product.start_at = parseInt(params.start_at)
+          if (params.start_price !== undefined) product.start_price = parseInt(params.start_price)
+          if (params.step_price !== undefined) product.step_price = parseInt(params.step_price)
+          if (params.round_time_1 !== undefined) product.round_time_1 = parseInt(params.round_time_1)
+          if (params.round_time_2 !== undefined) product.round_time_2 = parseInt(params.round_time_2)
+          if (params.round_time_3 !== undefined) product.round_time_3 = parseInt(params.round_time_3)
+          if (params.status && params.status === 'removed') product.status = params.status
+          let func = [product.save()]
+          if (params.images) {
+            func.push(ProductImages.findAll({
               where: {
                 product_id: product.id
               }
@@ -203,42 +205,18 @@ class ProductService {
                 }
               }
               return Promise.all(updateFuncs)
-            })
-          ])
+            }))
+          }
+          return Promise.all(func)
         }).then(result => {
           return result
         })
       } else {
-        return {success: false, msg: 'Unauthorized'}
+        return new Error('Unauthorized')
       }
     })
   }
-  destroy (id, userId) {
-    return User.findById(userId).then(user => {
-      if (user.role === 'seller' || user.role === 'admin') {
-        return Products.findById(id).then(product => {
-          if (product.seller_id !== userId) return {success: false, msg: 'Unauthorized'}
-          return Promise.all([
-            product.destroy(),
-            ProductImages.findAll({
-              where: {
-                product_id: product.id
-              }
-            }).then(images => {
-              let updateFuncs = images.map((image, index) => {
-                return image.destroy()
-              })
-              return Promise.all(updateFuncs)
-            })
-          ])
-        }).then(result => {
-          return result
-        })
-      } else {
-        return {success: false, msg: 'Unauthorized'}
-      }
-    })
-  }
+
   create (params) {
     return Products.create(params).then(product => {
       if (params.images.length === 0) return product

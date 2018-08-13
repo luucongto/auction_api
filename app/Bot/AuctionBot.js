@@ -85,24 +85,34 @@ class AuctionBot {
         case 'update':
           params.user_id = data.id
           self.service.update(params.id, params).then(result => {
+            if (result instanceof Error) {
+              self._emitUser(data.id, {success: false, msg: result.message}, 'seller_message')
+              return
+            }
             let product = result[0]
             self._addProductToQueue(product)
             self._broadCastToAuctionRoom([product])
             self._emitUser(data.id, {success: true, msg: `Update ID[${params.id}] successfully!!!`, product}, 'seller_message')
           }).catch(error => {
             console.error(error)
-            self._emitUser(data.id, {success: false, msg: `Unauthorized`}, 'seller_message')
+            self._emitUser(data.id, {success: false, msg: error.message}, 'seller_message')
           })
           break
-        case 'destroy': {
-          // Temporary disable. Should not delete, just update to finished
-          // service.destroy(params.id, data.id).then(result => {
-          //   self._emitUser(data.id, {success: true, msg: `Deleted ID[${params.id}] successfully!!!`, destroy: params.id}, 'seller_message')
-          //   self.restart()
-          // }).catch(error => {
-          //   console.error(error)
-          //   self._emitUser(data.id, {success: false, msg: `Unauthorized`}, 'seller_message')
-          // })
+        case 'remove': {
+          this.service.update(params.id, {id: params.id, status: 'removed', user_id: data.id, seller_id: data.id}).then(result => {
+            if (result instanceof Error) {
+              self._emitUser(data.id, {success: false, msg: result.message}, 'seller_message')
+              return
+            }
+            console.log(result)
+            let product = result[0]
+            self._addProductToQueue(product)
+            self._broadCastToAuctionRoom([product])
+            self._emitUser(data.id, {success: true, msg: `Removed ID[${params.id}] successfully!!!`, destroy: params.id}, 'seller_message')
+          }).catch(error => {
+            console.error(error)
+            self._emitUser(data.id, {success: false, msg: error.message}, 'seller_message')
+          })
           break
         }
       }
@@ -295,7 +305,7 @@ Initialized. Start Processing Auctions.
         // not started or done
         return
       }
-      if (product.status === 'finished') {
+      if (product.status === 'finished' || product.status === 'removed') {
         // remove from mem
         delete self.products[product.id]
         return
