@@ -1,8 +1,7 @@
 import ProductService from '../Services/ProductService'
 import { AuctionBids, AuctionConfigs, Products, User } from '../Models'
-import {Op} from 'sequelize'
 import underscore from 'underscore'
-
+import Const from '../config/config'
 const MAX_BID = 1000000000 // 1bil
 class AuctionBot {
   constructor () {
@@ -78,7 +77,7 @@ class AuctionBot {
     data.socket.on('seller', params => {
       switch (params.command) {
         case 'seller_get':
-          self.service.getProductsBySeller(data.id).then(result => {
+          self.service.getProductsBySeller(data.id, data.role === 'admin').then(result => {
             self._emitUser(data.id, {success: true, products: result}, 'seller_message')
           })
           break
@@ -89,7 +88,8 @@ class AuctionBot {
               self._emitUser(data.id, {success: false, msg: result.message}, 'seller_message')
               return
             }
-            let product = result[0]
+            console.log('result', JSON.stringify(result))
+            let product = result
             self._addProductToQueue(product)
             self._broadCastToAuctionRoom([product])
             self._emitUser(data.id, {success: true, msg: `Update ID[${params.id}] successfully!!!`, product}, 'seller_message')
@@ -99,13 +99,13 @@ class AuctionBot {
           })
           break
         case 'remove': {
-          this.service.update(params.id, {id: params.id, status: 'removed', user_id: data.id, seller_id: data.id}).then(result => {
+          this.service.update(params.id, {id: params.id, status: Const.PRODUCT_STATUS.REMOVED, user_id: data.id, seller_id: data.id}).then(result => {
             if (result instanceof Error) {
               self._emitUser(data.id, {success: false, msg: result.message}, 'seller_message')
               return
             }
-            console.log(result)
-            let product = result[0]
+            console.log('result', JSON.stringify(result))
+            let product = result
             self._addProductToQueue(product)
             self._broadCastToAuctionRoom([product])
             self._emitUser(data.id, {success: true, msg: `Removed ID[${params.id}] successfully!!!`, destroy: params.id}, 'seller_message')
@@ -305,7 +305,7 @@ Initialized. Start Processing Auctions.
         // not started or done
         return
       }
-      if (product.status === 'finished' || product.status === 'removed') {
+      if (product.status === Const.PRODUCT_STATUS.FINISHED || product.status === Const.PRODUCT_STATUS.REMOVED) {
         // remove from mem
         delete self.products[product.id]
         return
@@ -317,14 +317,14 @@ Initialized. Start Processing Auctions.
       }
 
       let needBroadcast = false
-      if (product.status === 'bidding' && self.activeAuctions.indexOf(product.id) < 0) {
+      if (product.status === Const.PRODUCT_STATUS.BIDDING && self.activeAuctions.indexOf(product.id) < 0) {
         self.activeAuctions.push(product.id)
-      } else if (product.status === 'waiting') {
+      } else if (product.status === Const.PRODUCT_STATUS.WAITING) {
         self.activeAuctions.push(product.id)
-        product.status = 'bidding'
+        product.status = Const.PRODUCT_STATUS.BIDDING
         Products.update({
           updated_at: now,
-          status: 'bidding'
+          status: Const.PRODUCT_STATUS.BIDDING
         }, {where: {
           id: product.id
         }})
@@ -359,12 +359,12 @@ Initialized. Start Processing Auctions.
           // end of round, finish auction
           this.activeAuctions.splice(this.activeAuctions.indexOf(product.id), 1)
           // console.log('change finished', this.activeAuctions)
-          product.status = 'finished'
+          product.status = Const.PRODUCT_STATUS.FINISHED
           product.winner_id = product.round.bidder
           product.win_price = product.round.bid_price
           Products.update({
             updated_at: now,
-            status: 'finished',
+            status: Const.PRODUCT_STATUS.FINISHED,
             winner_id: product.round.bidder,
             win_price: product.round.bid_price
           }, {where: {

@@ -3,6 +3,7 @@ import passport from 'passport'
 import ProductService from '../../Services/ProductService'
 import multer from 'multer'
 import fs from 'fs'
+import AuctionBot from '../../Bot/AuctionBot'
 var XLSX = require('xlsx')
 var express = require('express')
 var router = express.Router()
@@ -73,11 +74,17 @@ router.post('/import', [passport.authenticate('jwt'), verifySeller, upload.singl
 
   let service = new ProductService(req)
   service.import(workbook, req.user.id).then(products => {
+    products.forEach(product => {
+      AuctionBot._addProductToQueue(product)
+    })
+    
     res.send({
       success: true,
       data: products
     })
-    fs.unlink(file.path)
+    fs.unlink(file.path, function (error) {
+      console.log(error)
+    })
   }).catch(error => {
     console.error(error)
     res.send({

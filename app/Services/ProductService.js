@@ -1,7 +1,7 @@
 import {Products, ProductImages, User} from '../Models'
 import autoBind from 'auto-bind'
-import underscore from 'underscore'
 import {Op} from 'sequelize'
+import Const from '../config/config'
 class ProductService {
   constructor (userId) {
     this.userId = userId
@@ -16,6 +16,7 @@ class ProductService {
           product_id: id
         }
       }).then(images => {
+        product = product.get()
         product.images = images
         return product
       })
@@ -42,7 +43,8 @@ class ProductService {
   getProductsBySeller (sellerId) {
     return Products.findAll({
       where: {
-        status: 'waiting'
+        seller_id: sellerId,
+        status: Const.PRODUCT_STATUS.WAITING
       }
     }).then(products => {
       let queries = products.map(product => {
@@ -66,7 +68,7 @@ class ProductService {
     return Products.findAll({
       where: {
         status: {
-          [Op.in]: ['bidding', 'waiting']
+          [Op.in]: [Const.PRODUCT_STATUS.BIDDING, Const.PRODUCT_STATUS.WAITING]
         }
       },
       order: [
@@ -92,14 +94,14 @@ class ProductService {
   getSoldProductForSeller (params) {
     console.log(params)
     let queries = {
-      status: 'finished'
+      status: Const.PRODUCT_STATUS.FINISHED
     }
     if (params.userId) {
       queries.seller_id = params.userId
     }
     return Products.findAll({
       where: {
-        status: 'finished',
+        status: Const.PRODUCT_STATUS.FINISHED,
         updated_at: {
           [Op.gte]: params.updated_at || '0'
         }
@@ -127,7 +129,7 @@ class ProductService {
   }
   getSold (page = 0) {
     let queries = {
-      status: 'finished'
+      status: Const.PRODUCT_STATUS.FINISHED
     }
 
     return Products.findAll({
@@ -172,7 +174,7 @@ class ProductService {
     return User.findById(params.user_id).then(user => {
       if (user.role === 'seller' || user.role === 'admin') {
         return Products.findById(params.id).then(product => {
-          if (!product || product.status !== 'waiting') return new Error('Unauthorized!!! Product cannot be edited!!!')
+          if (!product || product.status !== Const.PRODUCT_STATUS.WAITING) return new Error('Unauthorized!!! Product cannot be edited!!!')
           if (user.role !== 'admin' && product.seller_id !== params.user_id) return new Error('Unauthorized')
           if (params.name !== undefined) product.name = params.name
           if (params.ams_code !== undefined) product.ams_code = params.ams_code
@@ -182,9 +184,10 @@ class ProductService {
           if (params.round_time_1 !== undefined) product.round_time_1 = parseInt(params.round_time_1)
           if (params.round_time_2 !== undefined) product.round_time_2 = parseInt(params.round_time_2)
           if (params.round_time_3 !== undefined) product.round_time_3 = parseInt(params.round_time_3)
-          if (params.status && params.status === 'removed') product.status = params.status
+          if (params.status && params.status === Const.PRODUCT_STATUS.REMOVED) product.status = params.status
           let func = [product.save()]
           if (params.images) {
+            console.log(params.images)
             func.push(ProductImages.findAll({
               where: {
                 product_id: product.id
@@ -201,7 +204,11 @@ class ProductService {
               })
               for (var i = images.length; i < params.images.length; i++) {
                 if (params.images[i].src.length && params.images[i].caption.length) {
-                  updateFuncs.push(ProductImages.create(params.images[i]))
+                  updateFuncs.push(ProductImages.create({
+                    product_id: product.id,
+                    src: params.images[i].src,
+                    caption: params.images[i].caption
+                  }))
                 }
               }
               return Promise.all(updateFuncs)
@@ -209,7 +216,9 @@ class ProductService {
           }
           return Promise.all(func)
         }).then(result => {
-          return result
+          let product = result[0].get()
+          product.images = result[1]
+          return product// self.get(params.id)
         })
       } else {
         return new Error('Unauthorized')
@@ -217,28 +226,13 @@ class ProductService {
     })
   }
 
-  create (params) {
-    return Products.create(params).then(product => {
-      if (params.images.length === 0) return product
-
-      let data = params.images.map(e => {
-        return {
-          product_id: product.id,
-          image_path: e
-        }
-      })
-      return ProductImages.bulkCreate(data).then(images => {
-        product.images = images
-        return product
-      })
-    })
-  }
   import (workbook, sellerId) {
     let productWorksheet = workbook.Sheets['products']
     let productImgWorkSheet = workbook.Sheets['product_images']
     let productParams = []
     let productImgs = {}
     let self = this
+    let now = Math.floor(new Date().getTime() / 1000)
     for (var i = 2; productWorksheet[`A${i}`] && productWorksheet[`A${i}`].v; i++) {
       try {
         productParams.push({
@@ -252,7 +246,8 @@ class ProductService {
           round_time_1: parseInt(productWorksheet[`H${i}`].v),
           round_time_2: parseInt(productWorksheet[`I${i}`].v),
           round_time_3: parseInt(productWorksheet[`J${i}`].v),
-          status: 'waiting',
+          status: Const.PRODUCT_STATUS.WAITING,
+          created_at: now,
           seller_id: sellerId
         })
       } catch (e) {

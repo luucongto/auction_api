@@ -28,7 +28,7 @@ const User = sequelize.define('user', {
   password: Sequelize.STRING,
   socketid: Sequelize.STRING,
   roomsocketid: Sequelize.STRING,
-  role: {type: Sequelize.STRING, default: 'user'}
+  role: {type: Sequelize.STRING, defaultValue: 'user'}
 }, {
   indexes: [
     // Create a unique index on email
@@ -46,20 +46,30 @@ const Products = sequelize.define('product', {
   name: Sequelize.STRING,
   category: Sequelize.STRING,
   ams_code: Sequelize.STRING,
-  start_at: {type: Sequelize.INTEGER, default: 0},
-  start_price: {type: Sequelize.INTEGER, default: 10000},
-  step_price: {type: Sequelize.INTEGER, default: 1000},
-  round_time_1: {type: Sequelize.INTEGER, default: 360},
-  round_time_2: {type: Sequelize.INTEGER, default: 60},
-  round_time_3: {type: Sequelize.INTEGER, default: 30},
-  status: {type: Sequelize.STRING, default: 'waiting'},
+  start_at: {type: Sequelize.INTEGER, defaultValue: 0},
+  start_price: {type: Sequelize.INTEGER, defaultValue: 10000},
+  step_price: {type: Sequelize.INTEGER, defaultValue: 1000},
+  round_time_1: {type: Sequelize.INTEGER, defaultValue: 360},
+  round_time_2: {type: Sequelize.INTEGER, defaultValue: 60},
+  round_time_3: {type: Sequelize.INTEGER, defaultValue: 30},
+  status: {type: Sequelize.INTEGER, defaultValue: 1},
   seller_id: Sequelize.INTEGER,
   winner_id: Sequelize.INTEGER,
   win_price: Sequelize.INTEGER,
-  updated_at: Sequelize.INTEGER
+  updated_at: Sequelize.INTEGER,
+  created_at: Sequelize.INTEGER
 }, {
+  timestamps: false,
   indexes: [
-    {name: 'updated_at', fields: ['updated_at']}
+    {
+      unique: true,
+      fields: ['ams_code']
+    },
+    {name: 'updated_at', fields: ['updated_at']},
+    {name: 'start_at', fields: ['start_at']},
+    {name: 'status', fields: ['status']},
+    {name: 'seller_id', fields: ['seller_id']},
+    {name: 'winner_id', fields: ['winner_id']}
   ]
 })
 
@@ -67,6 +77,11 @@ const ProductImages = sequelize.define('product_image', {
   product_id: Sequelize.INTEGER,
   src: Sequelize.TEXT,
   caption: Sequelize.TEXT
+}, {
+  timestamps: false,
+  indexes: [
+    {name: 'product_id', fields: ['product_id']}
+  ]
 })
 
 const AuctionBids = sequelize.define('auction_bid', {
@@ -75,6 +90,7 @@ const AuctionBids = sequelize.define('auction_bid', {
   placed_at: Sequelize.INTEGER,
   bid_price: Sequelize.INTEGER
 }, {
+  timestamps: false,
   indexes: [
     {name: 'product_user', fields: ['product_id', 'user_id']},
     {name: 'price', fields: ['bid_price']}
@@ -89,6 +105,7 @@ const Notices = sequelize.define('notice', {
   start_at: Sequelize.INTEGER,
   content: Sequelize.TEXT
 }, {
+  timestamps: false,
   indexes: [
     {name: 'start_at', fields: ['start_at']}
   ]
