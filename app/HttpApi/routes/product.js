@@ -77,7 +77,7 @@ router.post('/import', [passport.authenticate('jwt'), verifySeller, upload.singl
     products.forEach(product => {
       AuctionBot._addProductToQueue(product)
     })
-    
+    AuctionBot._broadCastToAuctionRoom([products])
     res.send({
       success: true,
       data: products
@@ -86,7 +86,7 @@ router.post('/import', [passport.authenticate('jwt'), verifySeller, upload.singl
       console.log(error)
     })
   }).catch(error => {
-    console.error(error)
+    console.error('import', error)
     res.send({
       success: false,
       error: error.message

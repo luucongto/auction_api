@@ -1,9 +1,10 @@
 module.exports = {
   secret: 'punch_auctionthisisjwtsecretkeyanddonotshow',
   PRODUCT_STATUS: {
-    REMOVED: 0,
     WAITING: 1,
-    BIDDING: 2,
-    FINISHED: 3
+    AUCTIONING: 2,
+    BIDDING: 3,
+    FINISHED: 4,
+    REMOVED: 5
   }
 }

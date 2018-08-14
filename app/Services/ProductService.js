@@ -3,8 +3,7 @@ import autoBind from 'auto-bind'
 import {Op} from 'sequelize'
 import Const from '../config/config'
 class ProductService {
-  constructor (userId) {
-    this.userId = userId
+  constructor () {
     autoBind(this)
   }
 
@@ -44,7 +43,9 @@ class ProductService {
     return Products.findAll({
       where: {
         seller_id: sellerId,
-        status: Const.PRODUCT_STATUS.WAITING
+        status: {
+          [Op.in]: [Const.PRODUCT_STATUS.WAITING, Const.PRODUCT_STATUS.AUCTIONING]
+        }
       }
     }).then(products => {
       let queries = products.map(product => {
@@ -68,7 +69,7 @@ class ProductService {
     return Products.findAll({
       where: {
         status: {
-          [Op.in]: [Const.PRODUCT_STATUS.BIDDING, Const.PRODUCT_STATUS.WAITING]
+          [Op.in]: [Const.PRODUCT_STATUS.BIDDING, Const.PRODUCT_STATUS.AUCTIONING, Const.PRODUCT_STATUS.WAITING]
         }
       },
       order: [
@@ -174,7 +175,9 @@ class ProductService {
     return User.findById(params.user_id).then(user => {
       if (user.role === 'seller' || user.role === 'admin') {
         return Products.findById(params.id).then(product => {
-          if (!product || product.status !== Const.PRODUCT_STATUS.WAITING) return new Error('Unauthorized!!! Product cannot be edited!!!')
+          if (!product || (product.status !== Const.PRODUCT_STATUS.WAITING && product.status !== Const.PRODUCT_STATUS.AUCTIONING)) {
+            return new Error('Unauthorized!!! Product cannot be edited!!!')
+          }
           if (user.role !== 'admin' && product.seller_id !== params.user_id) return new Error('Unauthorized')
           if (params.name !== undefined) product.name = params.name
           if (params.ams_code !== undefined) product.ams_code = params.ams_code
@@ -184,6 +187,7 @@ class ProductService {
           if (params.round_time_1 !== undefined) product.round_time_1 = parseInt(params.round_time_1)
           if (params.round_time_2 !== undefined) product.round_time_2 = parseInt(params.round_time_2)
           if (params.round_time_3 !== undefined) product.round_time_3 = parseInt(params.round_time_3)
+          if (params.auto_start !== undefined) product.auto_start = !!params.auto_start
           if (params.status && params.status === Const.PRODUCT_STATUS.REMOVED) product.status = params.status
           let func = [product.save()]
           if (params.images) {
@@ -216,6 +220,10 @@ class ProductService {
           }
           return Promise.all(func)
         }).then(result => {
+          if (!result || !result.length) {
+            console.log('update error', id, params, result)
+            return result
+          }
           let product = result[0].get()
           product.images = result[1]
           return product// self.get(params.id)
@@ -270,13 +278,16 @@ class ProductService {
       }
     }
     let creates = productParams.map(p => {
-      return Products.create(p).then(product => {
+      return Products.create(p).then(productObj => {
+        let product = productObj.get()
+        product.images = []
         if (productImgs[p.req_id]) {
           let imgs = productImgs[p.req_id].map(img => {
             img.product_id = product.id
             return img
           })
           return ProductImages.bulkCreate(imgs).then(() => {
+            product.images = imgs
             return product
           })
         } else {

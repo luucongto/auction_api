@@ -2,7 +2,7 @@ require('dotenv').config()
 const Sequelize = require('sequelize')
 const connectionString = process.env.CLEARDB_DATABASE_URL || 'mysql://root@localhost:3306/auction?reconnect=true'
 const sequelize = new Sequelize(connectionString, {
-  // logging: false
+  logging: false
 })
 
 // const sequelize = new Sequelize('socket', 'root', '', {
@@ -57,7 +57,8 @@ const Products = sequelize.define('product', {
   winner_id: Sequelize.INTEGER,
   win_price: Sequelize.INTEGER,
   updated_at: Sequelize.INTEGER,
-  created_at: Sequelize.INTEGER
+  created_at: Sequelize.INTEGER,
+  auto_start: {type: Sequelize.BOOLEAN, defaul: false}
 }, {
   timestamps: false,
   indexes: [
