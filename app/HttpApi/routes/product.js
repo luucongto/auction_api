@@ -77,7 +77,7 @@ router.post('/import', [passport.authenticate('jwt'), verifySeller, upload.singl
     products.forEach(product => {
       AuctionBot._addProductToQueue(product)
     })
-    AuctionBot._broadCastToAuctionRoom([products])
+    AuctionBot._broadCastToAuctionRoom(products)
     res.send({
       success: true,
       data: products
