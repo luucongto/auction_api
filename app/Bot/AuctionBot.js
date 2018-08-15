@@ -59,7 +59,7 @@ class AuctionBot {
           params.bid_price = parseInt(params.bid_price)
           params.bid_price = params.bid_price - params.bid_price % product.step_price
           if (params.bid_price > (self.auctionConfigs['max_bid'] || MAX_BID)) {
-            self._emitUser(data.id, { type: 'error', msg: 'You bidded too big!!! Max:' + (self.auctionConfigs['max_bid'] || MAX_BID) }, 'server_message')
+            self._emitUser(data.id, { type: 'error', msg: 'you_bid_too_much', msgParams: {max: self.auctionConfigs['max_bid'] || MAX_BID} }, 'server_message')
             self._emitUser(data.id, {success: false, productId: product.id}, 'bid_message')
             return
           }
@@ -92,7 +92,7 @@ class AuctionBot {
             let product = result
             self._addProductToQueue(product)
             self._broadCastToAuctionRoom([product])
-            self._emitUser(data.id, {success: true, msg: `Update ID[${params.id}] successfully!!!`, product}, 'seller_message')
+            self._emitUser(data.id, {success: true, msg: 'update_product_success', msgParams: {id: params.id}, product}, 'seller_message')
           }).catch(error => {
             console.error(error)
             self._emitUser(data.id, {success: false, msg: error.message}, 'seller_message')
@@ -108,7 +108,7 @@ class AuctionBot {
             let product = result
             self._addProductToQueue(product)
             self._broadCastToAuctionRoom([product])
-            self._emitUser(data.id, {success: true, msg: `Removed ID[${params.id}] successfully!!!`, destroy: params.id}, 'seller_message')
+            self._emitUser(data.id, {success: true, msg: 'update_product_success', msgParams: {id: params.id}, destroy: params.id}, 'seller_message')
           }).catch(error => {
             console.error(error)
             self._emitUser(data.id, {success: false, msg: error.message}, 'seller_message')
