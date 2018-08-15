@@ -1,6 +1,6 @@
 import bcrypt from 'bcrypt'
 const passport = require('passport')
-const {User} = require('../Models/index')
+const {User, AuctionConfigs} = require('../Models/index')
 const JwtStrategy = require('passport-jwt').Strategy
 var LocalStrategy = require('passport-local').Strategy
 var ExtractJwt = require('passport-jwt').ExtractJwt
@@ -82,34 +82,38 @@ passport.use(new GoogleTokenStrategy({
   function (accessToken, refreshToken, profile, done) {
     var email = profile._json.email
     var domain = email.replace(/.*@/, '')
-    if (domain !== 'punch.vn') {
-      return done(null, false, {message: 'Invalid email domain. Please try again'})
-    }
-    User.findOrCreate({
+    AuctionConfigs.findOne({
       where: {
-        google_id: profile.id
-      },
-      defaults: {
-        username: profile.id,
-        name: profile.displayName,
-        image_url: profile._json.picture,
-        email: profile._json.email,
-        role: 'user'
+        key: 'limit_domain'
       }
-    }).spread((user, created) => {
-      if (!user) {
-        return done(null, false, { message: 'Incorrect username and password' })
+    }).then(config => {
+      if (config && config.raw_value && domain !== config.raw_value) {
+        return done(null, false, {message: 'Invalid email domain. Please try again'})
+      } else {
+        User.findOrCreate({
+          where: {
+            google_id: profile.id
+          },
+          defaults: {
+            username: profile.id,
+            name: profile.displayName,
+            image_url: profile._json.picture,
+            email: profile._json.email,
+            role: 'user'
+          }
+        }).spread((user, created) => {
+          if (!user) {
+            return done(null, false, { message: 'Incorrect username and password' })
+          }
+          let now = parseInt(new Date().getTime() / 1000)
+          user.logged_at = now
+          user.save()
+          return done(null, user)
+        }).catch(err => {
+          return done(err, false)
+        })
       }
-      let now = parseInt(new Date().getTime() / 1000)
-      user.logged_at = now
-      user.save()
-      return done(null, user)
-    }).catch(err => {
-      return done(err, false)
     })
-    // User.findOrCreate({ googleId: profile.id }, function (err, user) {
-    //   return cb(err, user)
-    // })
   }
 ))
 

@@ -98,8 +98,11 @@ const AuctionBids = sequelize.define('auction_bid', {
   ]
 })
 const AuctionConfigs = sequelize.define('auction_config', {
-  key: Sequelize.STRING,
-  value: Sequelize.INTEGER
+  key: {type: Sequelize.STRING, primaryKey: true},
+  value: Sequelize.INTEGER,
+  raw_value: Sequelize.STRING
+}, {
+  timestamps: false
 })
 const Notices = sequelize.define('notice', {
   title: Sequelize.STRING,
