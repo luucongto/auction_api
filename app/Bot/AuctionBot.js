@@ -49,7 +49,7 @@ class AuctionBot {
           let product = self.products[params.product_id]
           if (!product || product.start_at >= now) {
             self._emitUser(data.id, {type: 'error', msg: 'Product is not valid!!!'}, 'server_message')
-            self._emitUser(data.id, {success: false, productId: product.id}, 'bid_message')
+            self._emitUser(data.id, {success: false}, 'bid_message')
             return
           } else if (product.finished) {
             self._emitUser(data.id, {type: 'error', msg: 'Product has been sold!!!'}, 'server_message')
@@ -259,6 +259,7 @@ Initialized. Start Processing Auctions.
       }, {where: {
         id: product.id
       }})
+      product.status = Const.PRODUCT_STATUS.BIDDING
       if (product.round) {
         product.round.end_at = now + this._getRoundTime(product, 1)
         product.round.num = 1
@@ -294,115 +295,127 @@ Initialized. Start Processing Auctions.
         console.warn('BID PLACED', JSON.stringify(bid.get()))
       })
     } else {
-      console.warn('wrong bid', userId, params)
+      console.warn('wrong bid', userId, JSON.stringify(params))
       self._emitUser(userId, {type: 'error', msg: msg}, 'server_message')
       self._emitUser(userId, {success: false, productId: product.id}, 'bid_message')
     }
   }
   _proccessAuction (callback) {
-    let self = this
-    let now = parseInt(new Date().getTime() / 1000)
-    let needBroadCastProducts = []
     this._processBids()
-    Object.keys(this.products).forEach(productId => {
-      let product = self.products[productId]
-
-      if (!product || product.start_at > now) {
-        // not started or done
-        return
-      }
-      let index = self.activeAuctions.indexOf(product.id)
-      if (product.status === Const.PRODUCT_STATUS.FINISHED || product.status === Const.PRODUCT_STATUS.REMOVED) {
-        // remove from mem
-
-        if (index >= 0) {
-          self.activeAuctions.splice(index, 1)
-        }
-        delete self.products[product.id]
-        return
-      }
-      // if single auction and there is ongoing auction
-      let maxAuction = self.auctionConfigs['multi_auction_same_time'] || 1
-      if (self.activeAuctions.length >= maxAuction && index < 0) {
-        return
-      }
-
-      let needBroadcast = false
-      if (product.status === Const.PRODUCT_STATUS.BIDDING || (product.status === Const.PRODUCT_STATUS.AUCTIONING && index < 0)) {
-        self.activeAuctions.push(product.id)
-      } else if (product.status === Const.PRODUCT_STATUS.WAITING) {
-        self.activeAuctions.push(product.id)
-        product.status = Const.PRODUCT_STATUS.AUCTIONING
-        product.updated_at = now
-        Products.update({
-          updated_at: now,
-          status: Const.PRODUCT_STATUS.AUCTIONING
-        }, {where: {
-          id: product.id
-        }})
-        needBroadcast = true
-      }
-      if ((product.auto_start || self.auctionConfigs['auto_start']) && !product.round) {
-        product.round = {
-          bidder: 0,
-          bid_price: 0,
-          num: 1,
-          end_at: now + self._getRoundTime(product, 1)
-        }
-        Products.update({
-          updated_at: now,
-          status: Const.PRODUCT_STATUS.BIDDING
-        }, {where: {
-          id: product.id
-        }})
-        needBroadcast = true
-      }
-      // if round is activating
-      if (product.round) {
-        // if this round is end, go to next round
-        if (product.round.end_at < now) {
-          product.round.num++
-          // console.log('change round')
-          needBroadcast = true
-        } else if (!needBroadcast) {
-          return
-        }
-        // if next round has life time
-        if (self._getRoundTime(product, product.round.num)) {
-          product.round.end_at = now + self._getRoundTime(product, product.round.num)
-
-          needBroadcast = true
-          // console.log('change rouyntTime')
-        } else {
-          // end of round, finish auction
-          this.activeAuctions.splice(this.activeAuctions.indexOf(product.id), 1)
-          // console.log('change finished', this.activeAuctions)
-          product.status = Const.PRODUCT_STATUS.FINISHED
-          product.winner_id = product.round.bidder
-          product.win_price = product.round.bid_price
-          Products.update({
-            updated_at: now,
-            status: Const.PRODUCT_STATUS.FINISHED,
-            winner_id: product.round.bidder,
-            win_price: product.round.bid_price
-          }, {where: {
-            id: product.id
-          }})
-          needBroadcast = true
-        }
-      } else {
-        // no one bid
-      }
-      if (needBroadcast) {
-        needBroadCastProducts.push(product)
-      }
+    let self = this
+    let parallelFuncs = Object.keys(this.products).map(productId => {
+      return new Promise((resolve, reject) => {
+        let result = self._processAProduct(productId)
+        resolve(result)
+      })
     })
-    if (needBroadCastProducts.length > 0) {
-      // console.log('needBroadCastProducts', needBroadCastProducts.length)
-      this._broadCastToAuctionRoom(needBroadCastProducts)
-      needBroadCastProducts = []
+    Promise.all(parallelFuncs).then(result => {
+      let needBroadCastProducts = result.filter(e => e)
+      if (needBroadCastProducts.length > 0) {
+        // console.log('needBroadCastProducts', needBroadCastProducts.length)
+        this._broadCastToAuctionRoom(needBroadCastProducts)
+        needBroadCastProducts = []
+      }
+      callback()
+    })
+  }
+
+  _processAProduct (productId) {
+    let now = parseInt(new Date().getTime() / 1000)
+    let self = this
+    let product = self.products[productId]
+
+    if (!product || product.start_at > now) {
+            // not started or done
+      return null
     }
-    callback()
+    let index = self.activeAuctions.indexOf(product.id)
+    if (product.status === Const.PRODUCT_STATUS.FINISHED || product.status === Const.PRODUCT_STATUS.REMOVED) {
+            // remove from mem
+
+      if (index >= 0) {
+        self.activeAuctions.splice(index, 1)
+      }
+      delete self.products[product.id]
+      return null
+    }
+          // if single auction and there is ongoing auction
+    let maxAuction = self.auctionConfigs['multi_auction_same_time'] || 1
+
+    let needBroadcast = false
+    if ((product.status === Const.PRODUCT_STATUS.BIDDING || product.status === Const.PRODUCT_STATUS.AUCTIONING) && index < 0) {
+      console.log(`Active Status ${product.id}`)
+      self.activeAuctions.push(product.id)
+    } else if (self.activeAuctions.length >= maxAuction && index < 0) {
+      return null
+    } else if (self.activeAuctions.length < maxAuction && index < 0 && product.status === Const.PRODUCT_STATUS.WAITING) {
+      console.log(`Active Status ${product.id}`)
+      self.activeAuctions.push(product.id)
+      product.status = Const.PRODUCT_STATUS.AUCTIONING
+      product.updated_at = now
+      Products.update({
+        updated_at: now,
+        status: Const.PRODUCT_STATUS.AUCTIONING
+      }, {where: {
+        id: product.id
+      }})
+      needBroadcast = true
+    }
+    if ((product.auto_start || self.auctionConfigs['auto_start']) && !product.round) {
+      product.round = {
+        bidder: 0,
+        bid_price: 0,
+        num: 1,
+        end_at: now + self._getRoundTime(product, 1)
+      }
+      product.status = Const.PRODUCT_STATUS.BIDDING
+      Products.update({
+        updated_at: now,
+        status: Const.PRODUCT_STATUS.BIDDING
+      }, {where: {
+        id: product.id
+      }})
+      needBroadcast = true
+    }
+          // if round is activating
+    if (product.round) {
+            // if this round is end, go to next round
+      if (product.round.end_at < now) {
+        product.round.num++
+              // console.log('change round')
+        needBroadcast = true
+      } else if (!needBroadcast) {
+        return null
+      }
+            // if next round has life time
+      if (self._getRoundTime(product, product.round.num)) {
+        product.round.end_at = now + self._getRoundTime(product, product.round.num)
+
+        needBroadcast = true
+              // console.log('change rouyntTime')
+      } else {
+              // end of round, finish auction
+        this.activeAuctions.splice(index, 1)
+              // console.log('change finished', this.activeAuctions)
+        product.status = Const.PRODUCT_STATUS.FINISHED
+        product.winner_id = product.round.bidder
+        product.win_price = product.round.bid_price
+        Products.update({
+          updated_at: now,
+          status: Const.PRODUCT_STATUS.FINISHED,
+          winner_id: product.round.bidder,
+          win_price: product.round.bid_price
+        }, {where: {
+          id: product.id
+        }})
+        needBroadcast = true
+      }
+    } else {
+            // no one bid
+    }
+    if (needBroadcast) {
+      return product
+    } return null
   }
 }
 
