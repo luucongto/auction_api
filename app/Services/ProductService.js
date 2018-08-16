@@ -248,7 +248,7 @@ class ProductService {
           name: productWorksheet[`B${i}`].v,
           category: productWorksheet[`C${i}`].v,
           ams_code: productWorksheet[`D${i}`].v,
-          start_at: Math.floor(new Date(productWorksheet[`E${i}`].w).getTime() / 1000),
+          start_at: Math.floor(new Date(productWorksheet[`E${i}`].w + ' GMT +07').getTime() / 1000),
           start_price: parseInt(productWorksheet[`F${i}`].v),
           step_price: parseInt(productWorksheet[`G${i}`].v),
           round_time_1: parseInt(productWorksheet[`H${i}`].v),
@@ -268,10 +268,13 @@ class ProductService {
         if (!productImgs[pId]) {
           productImgs[pId] = []
         }
-        productImgs[pId].push({
-          product_id: productImgWorkSheet[`A${i}`].v,
-          src: productImgWorkSheet[`B${i}`].v,
-          caption: productImgWorkSheet[`C${i}`].v
+        let captions = productImgWorkSheet[`C${i}`].v.split('\n')
+        captions.forEach(caption => {
+          productImgs[pId].push({
+            product_id: productImgWorkSheet[`A${i}`].v,
+            src: productImgWorkSheet[`B${i}`].v,
+            caption: caption
+          })
         })
       } catch (e) {
         console.error(i, e)
