@@ -15,15 +15,30 @@ services:
     ports:
       - "9306:3306"
     restart: always
+    networks:
+      - localnet
   nodejs:
     container_name: pvnauction_nodejs
     image: node:8
     working_dir: /home/node/app
     volumes:
       - ./:/home/node/app
-    command: ["/bin/bash", -c, "npm install && npm start"]
-    ports:
-      - "9300:3000"
+    command: ["./docker/run.sh"]
+    environment:
+      - VIRTUAL_HOST=server.auction.punch.vn
+      - VIRTUAL_PORT=3000
+    expose:
+      - "3000"
     depends_on:
       - db
     restart: always
+    networks:
+      - localnet
+      - reverse-proxy
+
+networks:
+  localnet:
+    driver: bridge
+  reverse-proxy:
+    external:
+      name: reverse-proxy
