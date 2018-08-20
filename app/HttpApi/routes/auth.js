@@ -8,8 +8,7 @@ var express = require('express')
 var router = express.Router()
 var createToken = function (auth) {
   var token = jwt.sign(JSON.stringify({
-    id: auth.id,
-    logged_at: auth.logged_at
+    id: auth.id
   }), settings.secret)
   return token
 }
@@ -36,8 +35,7 @@ router.post('/login',
       return res.send(401, 'User Not Authenticated')
     }
     req.auth = {
-      id: req.user.id,
-      logged_at: req.user.logged_at
+      id: req.user.id
     }
     next()
   }, generateToken, sendToken
@@ -50,8 +48,7 @@ router.post('/auth/google',
       return res.send(401, 'User Not Authenticated')
     }
     req.auth = {
-      id: req.user.id,
-      logged_at: req.user.logged_at
+      id: req.user.id
     }
 
     next()
@@ -72,7 +69,7 @@ router.get('/logout', [passport.authenticate('jwt')], (req, res) => {
       id: req.user.id
     }
   }).then(user => {
-    user.logged_at = new Date().getTime()
+    user.logged_at = parseInt(new Date().getTime() / 1000)
     user.save()
     req.logout()
     res.send({

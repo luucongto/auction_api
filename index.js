@@ -19,7 +19,7 @@ sequelize.sync().then(() => {
       password: bcrypt.hashSync('very_complex_password', 10),
       name: 'Admin',
       email: null,
-      logged_at: new Date().getTime(),
+      logged_at: parseInt(new Date().getTime() / 1000),
       role: 'admin'
     }
   }).spread((user, create) => {
@@ -97,8 +97,8 @@ let connectCounter = 0
 io.on('connection', (socket) => {
   socket.on('connect', function () { connectCounter++ })
   socket.on('disconnect', function () {
-    connectCounter-- 
-    if(socket.request.user){
+    connectCounter--
+    if (socket.request.user) {
       AuctionBot.removeUser({
         id: socket.request.user.id,
         socket: socket

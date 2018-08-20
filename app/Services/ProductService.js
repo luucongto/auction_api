@@ -254,6 +254,7 @@ class ProductService {
           round_time_1: parseInt(productWorksheet[`H${i}`].v),
           round_time_2: parseInt(productWorksheet[`I${i}`].v),
           round_time_3: parseInt(productWorksheet[`J${i}`].v),
+          auto_start: !!(productWorksheet[`K${i}`] && productWorksheet[`K${i}`].v === 'true'),
           status: Const.PRODUCT_STATUS.WAITING,
           created_at: now,
           seller_id: sellerId
