@@ -191,14 +191,14 @@ class ProductService {
           if (params.status && params.status === Const.PRODUCT_STATUS.REMOVED) product.status = params.status
           let func = [product.save()]
           if (params.images) {
-            console.log(params.images)
+            params.images = params.images.filter(image => image.src.length || image.caption.length)
             func.push(ProductImages.findAll({
               where: {
                 product_id: product.id
               }
             }).then(images => {
               let updateFuncs = images.map((image, index) => {
-                if (params.images.length < index) {
+                if (params.images.length < index + 1) {
                   return image.destroy()
                 } else {
                   image.src = params.images[index].src
