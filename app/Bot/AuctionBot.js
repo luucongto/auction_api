@@ -45,6 +45,10 @@ class AuctionBot {
     data.socket.on('auction', params => {
       switch (params.command) {
         case 'placeBid':
+          if (!this.activeUsers[userId]) {
+            self._emitUser(data.id, {success: false}, 'bid_message')
+            return
+          }
           let now = parseInt(new Date().getTime() / 1000)
           let product = self.products[params.product_id]
           if (!product || product.start_at >= now) {
