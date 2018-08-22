@@ -110,6 +110,9 @@ passport.use(new GoogleTokenStrategy({
             user.password = bcrypt.hashSync('123456', 10)
           }
           if (user.username !== userName) user.username = userName
+          user.name = profile.displayName
+          user.image_url = profile._json.picture
+          user.google_id = profile.id
           let now = parseInt(new Date().getTime() / 1000)
           user.logged_at = now
           user.save()
