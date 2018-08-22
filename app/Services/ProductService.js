@@ -163,11 +163,20 @@ class ProductService {
         winner_id: userId
       }
     }).then(products => {
-      let result = {}
-      products.forEach(product => {
-        result[product.id] = product.get()
+      let queries = products.map(product => {
+        return ProductImages.findAll({
+          where: {
+            product_id: product.id
+          }
+        }).then(images => {
+          let prod = product.get()
+          prod.images = images
+          return prod
+        })
       })
-      return {products: result}
+      return Promise.all(queries).then(ps => {
+        return {products: ps}
+      })
     })
   }
 
