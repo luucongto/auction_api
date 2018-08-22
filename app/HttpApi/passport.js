@@ -79,8 +79,10 @@ passport.use(new GoogleTokenStrategy({
   // callbackURL: `${process.env.ROOT_URL || 'http://localhost:3000'}/auth/google/callback`
 },
   function (accessToken, refreshToken, profile, done) {
+    console.log(profile)
     var email = profile._json.email
-    var domain = email.replace(/.*@/, '')
+    var domain = profile._json.hd
+    var userName = email.replace('@' + domain, '')
     AuctionConfigs.findOne({
       where: {
         key: 'limit_domain'
@@ -91,19 +93,23 @@ passport.use(new GoogleTokenStrategy({
       } else {
         User.findOrCreate({
           where: {
-            google_id: profile.id
+            email: profile._json.email
           },
           defaults: {
-            username: profile.id,
+            username: userName,
             name: profile.displayName,
             image_url: profile._json.picture,
-            email: profile._json.email,
+            google_id: profile.id,
             role: 'user'
           }
         }).spread((user, created) => {
           if (!user) {
             return done(null, false, { message: 'Incorrect username and password' })
           }
+          if (created) {
+            user.password = bcrypt.hashSync('123456', 10)
+          }
+          if (user.username !== userName) user.username = userName
           let now = parseInt(new Date().getTime() / 1000)
           user.logged_at = now
           user.save()
