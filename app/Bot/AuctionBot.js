@@ -244,6 +244,7 @@ Initialized. Start Processing Auctions.
     let bids = product.bids || []
     let msg = 'Invalid Bid'
     let userId = params.userId
+    if (!userId) return
     if (bids.length) {
       let maxPrice = bids[0].bid_price + product.step_price
       if (maxPrice <= params.bid_price) {
