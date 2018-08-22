@@ -47,6 +47,7 @@ class AuctionBot {
         case 'placeBid':
           if (!this.activeUsers[userId]) {
             self._emitUser(data.id, {success: false}, 'bid_message')
+            self._emitUser(data.id, {type: 'error', msg: 'Please relogin. Your token is expired!!1'}, 'server_message')
             return
           }
           let now = parseInt(new Date().getTime() / 1000)
