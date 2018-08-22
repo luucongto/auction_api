@@ -32,6 +32,10 @@ class AuctionBot {
   setUser (data) {
     let self = this
     let userId = data.id
+    if (!userId) {
+      data.socket.emit('server_message', {type: 'error', msg: 'Please relogin. Your token is expired!!'})
+      return
+    }
     if (this.activeUsers[userId]) {
       this.activeUsers[userId].socket.push(data.socket)
     } else {
@@ -45,9 +49,8 @@ class AuctionBot {
     data.socket.on('auction', params => {
       switch (params.command) {
         case 'placeBid':
-          if (!this.activeUsers[userId]) {
-            self._emitUser(data.id, {success: false}, 'bid_message')
-            self._emitUser(data.id, {type: 'error', msg: 'Please relogin. Your token is expired!!1'}, 'server_message')
+          if (!userId || !this.activeUsers[userId]) {
+            data.socket.emit('server_message', {type: 'error', msg: 'Please relogin. Your token is expired!!'})
             return
           }
           let now = parseInt(new Date().getTime() / 1000)
