@@ -36,6 +36,7 @@ class AuctionBot {
       data.socket.emit('server_message', {type: 'error', msg: 'Please relogin. Your token is expired!!'})
       return
     }
+
     if (this.activeUsers[userId]) {
       this.activeUsers[userId].socket.push(data.socket)
     } else {
@@ -51,10 +52,21 @@ class AuctionBot {
         case 'placeBid':
           if (!userId || !this.activeUsers[userId]) {
             data.socket.emit('server_message', {type: 'error', msg: 'Please relogin. Your token is expired!!'})
+            self._emitUser(data.id, {success: false}, 'bid_message')
+            return
+          }
+          if (data.role === 'admin') {
+            data.socket.emit('server_message', {type: 'error', msg: 'Admin cannot bid!!'})
+            self._emitUser(data.id, {success: false}, 'bid_message')
             return
           }
           let now = parseInt(new Date().getTime() / 1000)
           let product = self.products[params.product_id]
+          if (userId === product.seller_id) {
+            self._emitUser(data.id, {type: 'error', msg: 'You can\'t bid your product!'}, 'server_message')
+            self._emitUser(data.id, {success: false}, 'bid_message')
+            return
+          }
           if (!product || product.start_at >= now) {
             self._emitUser(data.id, {type: 'error', msg: 'Product is not valid!!!'}, 'server_message')
             self._emitUser(data.id, {success: false}, 'bid_message')

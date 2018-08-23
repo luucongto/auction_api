@@ -18,7 +18,7 @@ let authCheck = socketJwtAuth.authenticate({
         return done(null, false, 'user does not exist')
       }
       // return success with a user info
-      return done(null, {id: user.id})
+      return done(null, {id: user.id, role: user.role})
     }).catch(error => {
         // return error
       console.error('jwtauth Error', error)

@@ -105,11 +105,13 @@ io.on('connection', (socket) => {
       })
     }
   })
-  if (socket.request.user) {
+  if (socket.request.user && socket.request.user.id) {
     socket.join('auction_room', () => {
       connectCounter++
+      console.log(socket.request.user)
       AuctionBot.setUser({
         id: socket.request.user.id,
+        role: socket.request.user.role,
         socket: socket
       })
     })
