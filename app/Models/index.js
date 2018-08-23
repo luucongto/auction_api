@@ -46,7 +46,7 @@ const Products = sequelize.define('product', {
   name: Sequelize.STRING,
   category: Sequelize.STRING,
   ams_code: Sequelize.STRING,
-  start_at: {type: Sequelize.INTEGER, defaultValue: 0},
+  start_at: {type: Sequelize.INTEGER, defaultValue: 1890691200},
   start_price: {type: Sequelize.INTEGER, defaultValue: 10000},
   step_price: {type: Sequelize.INTEGER, defaultValue: 1000},
   round_time_1: {type: Sequelize.INTEGER, defaultValue: 360},

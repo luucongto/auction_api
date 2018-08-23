@@ -251,7 +251,7 @@ class ProductService {
     let now = Math.floor(new Date().getTime() / 1000)
     for (var i = 2; productWorksheet[`A${i}`] && productWorksheet[`A${i}`].v; i++) {
       try {
-        let startAt = productWorksheet[`E${i}`] ? new Date(productWorksheet[`E${i}`].w + ' GMT +07').getTime() : 0
+        let startAt = productWorksheet[`E${i}`] ? new Date(productWorksheet[`E${i}`].w + ' GMT +07').getTime() : 1890691200000
         productParams.push({
           req_id: productWorksheet[`A${i}`].v,
           name: productWorksheet[`B${i}`].v,
