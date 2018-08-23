@@ -175,7 +175,9 @@ class ProductService {
         })
       })
       return Promise.all(queries).then(ps => {
-        return {products: ps}
+        let products = {}
+        ps.forEach(p => products[p.id] = p)
+        return {products}
       })
     })
   }
