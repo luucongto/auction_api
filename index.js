@@ -5,6 +5,7 @@ import socketJwtAuth from './app/SocketApi/jwtAuth'
 import {auth, baseRoutes, accountRoutes, productRoutes, adminRoutes, noticeRoutes} from './app/HttpApi/routes'
 import {sequelize, User} from './app/Models'
 import AuctionBot from './app/Bot/AuctionBot'
+import ChatSystem from './app/Bot/ChatSystem'
 import bcrypt from 'bcrypt'
 require('dotenv').config()
 const express = require('express')
@@ -93,6 +94,7 @@ const io = socketIO().listen(server)
 
 io.use(socketJwtAuth)
 AuctionBot.setIo(io)
+ChatSystem.setIo(io)
 let connectCounter = 0
 io.on('connection', (socket) => {
   socket.on('connect', function () { connectCounter++ })
@@ -106,6 +108,14 @@ io.on('connection', (socket) => {
     }
   })
   if (socket.request.user && socket.request.user.id) {
+    socket.join('chat_room', () => {
+      ChatSystem.setUser({
+        id: socket.request.user.id,
+        role: socket.request.user.role,
+        socket: socket
+      })
+    })
+
     socket.join('auction_room', () => {
       connectCounter++
       console.log(socket.request.user)

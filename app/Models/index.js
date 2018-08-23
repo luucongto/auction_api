@@ -114,6 +114,17 @@ const Notices = sequelize.define('notice', {
     {name: 'start_at', fields: ['start_at']}
   ]
 })
+
+const ChatMessage = sequelize.define('chat_message', {
+  user_id: Sequelize.INTEGER,
+  created_at: Sequelize.INTEGER,
+  message: Sequelize.STRING
+}, {
+  timestamps: false,
+  indexes: [
+    {name: 'created_at', fields: ['created_at']}
+  ]
+})
 module.exports = {
   sequelize,
   User,
@@ -121,5 +132,6 @@ module.exports = {
   ProductImages,
   AuctionBids,
   Notices,
-  AuctionConfigs
+  AuctionConfigs,
+  ChatMessage
 }
