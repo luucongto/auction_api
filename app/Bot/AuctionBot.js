@@ -119,16 +119,31 @@ class AuctionBot {
           })
           break
         case 'remove': {
-          this.service.update(params.id, {id: params.id, status: Const.PRODUCT_STATUS.REMOVED, user_id: data.id, seller_id: data.id}).then(result => {
+          this.service.update(params.id, {id: params.id, status: Const.PRODUCT_STATUS.HIDE, user_id: data.id, seller_id: data.id}).then(result => {
             if (result instanceof Error) {
               self._emitUser(data.id, {success: false, msg: result.message}, 'seller_message')
               return
             }
-            console.log('result', JSON.stringify(result))
             let product = result
             self._addProductToQueue(product)
             self._broadCastToAuctionRoom([product])
-            self._emitUser(data.id, {success: true, msg: 'update_product_success', msgParams: {id: params.id}, destroy: params.id}, 'seller_message')
+            self._emitUser(data.id, {success: true, msg: 'update_product_success', msgParams: {id: params.id}, product}, 'seller_message')
+          }).catch(error => {
+            console.error(error)
+            self._emitUser(data.id, {success: false, msg: error.message}, 'seller_message')
+          })
+          break
+        }
+        case 'show': {
+          this.service.update(params.id, {id: params.id, status: Const.PRODUCT_STATUS.WAITING, user_id: data.id, seller_id: data.id}).then(result => {
+            if (result instanceof Error) {
+              self._emitUser(data.id, {success: false, msg: result.message}, 'seller_message')
+              return
+            }
+            let product = result
+            self._addProductToQueue(product)
+            self._broadCastToAuctionRoom([product])
+            self._emitUser(data.id, {success: true, msg: 'update_product_success', msgParams: {id: params.id}, product}, 'seller_message')
           }).catch(error => {
             console.error(error)
             self._emitUser(data.id, {success: false, msg: error.message}, 'seller_message')
@@ -351,7 +366,7 @@ Initialized. Start Processing Auctions.
       return null
     }
     let index = self.activeAuctions.indexOf(product.id)
-    if (product.status === Const.PRODUCT_STATUS.FINISHED || product.status === Const.PRODUCT_STATUS.REMOVED) {
+    if (product.status === Const.PRODUCT_STATUS.FINISHED || product.status === Const.PRODUCT_STATUS.REMOVED || product.status === Const.PRODUCT_STATUS.HIDE) {
             // remove from mem
 
       if (index >= 0) {

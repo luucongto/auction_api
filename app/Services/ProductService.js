@@ -44,7 +44,7 @@ class ProductService {
       where: {
         seller_id: sellerId,
         status: {
-          [Op.in]: [Const.PRODUCT_STATUS.WAITING, Const.PRODUCT_STATUS.AUCTIONING]
+          [Op.in]: [Const.PRODUCT_STATUS.HIDE, Const.PRODUCT_STATUS.WAITING, Const.PRODUCT_STATUS.AUCTIONING]
         }
       }
     }).then(products => {
@@ -184,7 +184,7 @@ class ProductService {
     return User.findById(params.user_id).then(user => {
       if (user.role === 'seller' || user.role === 'admin') {
         return Products.findById(params.id).then(product => {
-          if (!product || (product.status !== Const.PRODUCT_STATUS.WAITING && product.status !== Const.PRODUCT_STATUS.AUCTIONING)) {
+          if (!product || (product.status !== Const.PRODUCT_STATUS.WAITING && product.status !== Const.PRODUCT_STATUS.AUCTIONING && product.status !== Const.PRODUCT_STATUS.HIDE)) {
             return new Error('Unauthorized!!! Product cannot be edited!!!')
           }
           if (user.role !== 'admin' && product.seller_id !== params.user_id) return new Error('Unauthorized')
@@ -197,7 +197,7 @@ class ProductService {
           if (params.round_time_2 !== undefined) product.round_time_2 = parseInt(params.round_time_2)
           if (params.round_time_3 !== undefined) product.round_time_3 = parseInt(params.round_time_3)
           if (params.auto_start !== undefined) product.auto_start = !!params.auto_start
-          if (params.status && params.status === Const.PRODUCT_STATUS.REMOVED) product.status = params.status
+          if (params.status !== undefined && (params.status === Const.PRODUCT_STATUS.HIDE || params.status === Const.PRODUCT_STATUS.WAITING)) product.status = params.status
           let func = [product.save()]
           if (params.images) {
             params.images = params.images.filter(image => image.src.length || image.caption.length)
@@ -234,8 +234,7 @@ class ProductService {
             return result
           }
           let product = result[0].get()
-          product.images = result[1]
-          return product// self.get(params.id)
+          return this.get(product.id)
         })
       } else {
         return new Error('Unauthorized')
@@ -252,19 +251,20 @@ class ProductService {
     let now = Math.floor(new Date().getTime() / 1000)
     for (var i = 2; productWorksheet[`A${i}`] && productWorksheet[`A${i}`].v; i++) {
       try {
+        let startAt = productWorksheet[`E${i}`] ? new Date(productWorksheet[`E${i}`].w + ' GMT +07').getTime() : 0
         productParams.push({
           req_id: productWorksheet[`A${i}`].v,
           name: productWorksheet[`B${i}`].v,
           category: productWorksheet[`C${i}`].v,
           ams_code: productWorksheet[`D${i}`].v,
-          start_at: Math.floor(new Date(productWorksheet[`E${i}`].w + ' GMT +07').getTime() / 1000),
+          start_at: Math.floor(startAt / 1000),
           start_price: parseInt(productWorksheet[`F${i}`].v),
           step_price: parseInt(productWorksheet[`G${i}`].v),
           round_time_1: parseInt(productWorksheet[`H${i}`].v),
           round_time_2: parseInt(productWorksheet[`I${i}`].v),
           round_time_3: parseInt(productWorksheet[`J${i}`].v),
           auto_start: !!(productWorksheet[`K${i}`] && productWorksheet[`K${i}`].v === 'true'),
-          status: Const.PRODUCT_STATUS.WAITING,
+          status: Const.PRODUCT_STATUS.HIDE,
           created_at: now,
           seller_id: sellerId
         })
@@ -290,6 +290,7 @@ class ProductService {
         console.error(i, e)
       }
     }
+    console.log('importing', productParams.length)
     let creates = productParams.map(p => {
       return Products.create(p).then(productObj => {
         let product = productObj.get()
@@ -309,7 +310,11 @@ class ProductService {
       })
     })
     return Promise.all(creates).then(() => {
+      console.log('Import success', sellerId)
       return self.getProductsBySeller(sellerId)
+    }).catch(error => {
+      console.error('error', error)
+      return []
     })
   }
 }
