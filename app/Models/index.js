@@ -137,6 +137,14 @@ const Announcement = sequelize.define('announcement', {
     {name: 'display_to', fields: ['display_to']}
   ]
 })
+
+const AutoBid = sequelize.define('auto_bid', {
+  user_id: {type: Sequelize.INTEGER, primaryKey: true},
+  product_id: {type: Sequelize.INTEGER, primaryKey: true},
+  price: Sequelize.INTEGER
+}, {
+  timestamps: false
+})
 module.exports = {
   sequelize,
   User,
@@ -145,6 +153,7 @@ module.exports = {
   AuctionBids,
   Notices,
   AuctionConfigs,
+  AutoBid,
   Announcement,
   ChatMessage
 }

@@ -4,7 +4,7 @@ import socketJwtAuth from './app/SocketApi/jwtAuth'
 
 import {auth, baseRoutes, accountRoutes, productRoutes, adminRoutes, noticeRoutes} from './app/HttpApi/routes'
 import {sequelize, User} from './app/Models'
-import AuctionBot from './app/Bot/AuctionBot'
+import SocketManager from './app/Bot/SocketManager'
 import ChatSystem from './app/Bot/ChatSystem'
 import AnnouncementSystem from './app/Bot/AnnouncementSystem'
 import bcrypt from 'bcrypt'
@@ -26,7 +26,6 @@ sequelize.sync().then(() => {
     }
   }).spread((user, create) => {
     // startBot
-    AuctionBot.start()
   })
 })
 // Http Server
@@ -94,7 +93,7 @@ const socketIO = require('socket.io')
 const io = socketIO().listen(server)
 
 io.use(socketJwtAuth)
-AuctionBot.setIo(io)
+SocketManager.setIo(io)
 ChatSystem.setIo(io)
 AnnouncementSystem.setIo(io)
 let connectCounter = 0
@@ -103,7 +102,7 @@ io.on('connection', (socket) => {
   socket.on('disconnect', function () {
     connectCounter--
     if (socket.request.user) {
-      AuctionBot.removeUser({
+      SocketManager.removeUser({
         id: socket.request.user.id,
         socket: socket
       })
@@ -122,7 +121,7 @@ io.on('connection', (socket) => {
     socket.join('auction_room', () => {
       connectCounter++
       AnnouncementSystem.setUser(user)
-      AuctionBot.setUser(user)
+      SocketManager.setUser(user)
     })
   } else {
     console.error('Socket Unauthorized!!')
