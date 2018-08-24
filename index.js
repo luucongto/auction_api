@@ -6,6 +6,7 @@ import {auth, baseRoutes, accountRoutes, productRoutes, adminRoutes, noticeRoute
 import {sequelize, User} from './app/Models'
 import AuctionBot from './app/Bot/AuctionBot'
 import ChatSystem from './app/Bot/ChatSystem'
+import AnnouncementSystem from './app/Bot/AnnouncementSystem'
 import bcrypt from 'bcrypt'
 require('dotenv').config()
 const express = require('express')
@@ -95,6 +96,7 @@ const io = socketIO().listen(server)
 io.use(socketJwtAuth)
 AuctionBot.setIo(io)
 ChatSystem.setIo(io)
+AnnouncementSystem.setIo(io)
 let connectCounter = 0
 io.on('connection', (socket) => {
   socket.on('connect', function () { connectCounter++ })
@@ -108,22 +110,19 @@ io.on('connection', (socket) => {
     }
   })
   if (socket.request.user && socket.request.user.id) {
+    let user = {
+      id: socket.request.user.id,
+      role: socket.request.user.role,
+      socket: socket
+    }
     socket.join('chat_room', () => {
-      ChatSystem.setUser({
-        id: socket.request.user.id,
-        role: socket.request.user.role,
-        socket: socket
-      })
+      ChatSystem.setUser(user)
     })
 
     socket.join('auction_room', () => {
       connectCounter++
-      console.log(socket.request.user)
-      AuctionBot.setUser({
-        id: socket.request.user.id,
-        role: socket.request.user.role,
-        socket: socket
-      })
+      AnnouncementSystem.setUser(user)
+      AuctionBot.setUser(user)
     })
   } else {
     console.error('Socket Unauthorized!!')

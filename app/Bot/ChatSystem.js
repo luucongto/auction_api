@@ -27,7 +27,7 @@ class ChatSystem {
           ['created_at', 'asc']
         ]
       }).then(messages => {
-        self._broadCastToAuctionRoom({messages}, 'chat_message')
+        data.socket.emit('chat_message' , {messages})
       })
     }, 3000)
 

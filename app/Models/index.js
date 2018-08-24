@@ -125,6 +125,18 @@ const ChatMessage = sequelize.define('chat_message', {
     {name: 'created_at', fields: ['created_at']}
   ]
 })
+
+const Announcement = sequelize.define('announcement', {
+  display_to: Sequelize.INTEGER,
+  created_at: Sequelize.INTEGER,
+  message: Sequelize.STRING
+}, {
+  timestamps: false,
+  indexes: [
+    {name: 'created_at', fields: ['created_at']},
+    {name: 'display_to', fields: ['display_to']}
+  ]
+})
 module.exports = {
   sequelize,
   User,
@@ -133,5 +145,6 @@ module.exports = {
   AuctionBids,
   Notices,
   AuctionConfigs,
+  Announcement,
   ChatMessage
 }

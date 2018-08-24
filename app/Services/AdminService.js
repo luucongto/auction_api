@@ -1,4 +1,4 @@
-import {AuctionConfigs} from '../Models'
+import {AuctionConfigs, Announcement} from '../Models'
 import autoBind from 'auto-bind'
 import AuctionBot from '../Bot/AuctionBot'
 class AdminService {
@@ -33,6 +33,9 @@ class AdminService {
       AuctionBot.restart()
       return configs
     })
+  }
+  announce (params) {
+    return Announcement.create(params)
   }
 }
 
