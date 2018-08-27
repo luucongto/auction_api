@@ -294,7 +294,32 @@ class ProductService {
     }
     console.log('importing', productParams.length)
     let creates = productParams.map(p => {
-      return Products.create(p).then(productObj => {
+      return Products.findOne({
+        where: {
+          ams_code: p.ams_code
+        }
+      }).then(pObj => {
+        if (pObj) {
+          if (pObj.seller_id === p.seller_id && (pObj.status === Const.PRODUCT_STATUS.HIDE || pObj.status === Const.PRODUCT_STATUS.WAITING)) {
+            pObj.name = p.name
+            pObj.start_at = p.start_at
+            pObj.start_price = p.start_price
+            pObj.step_price = p.step_price
+            pObj.round_time_1 = p.round_time_1
+            pObj.round_time_2 = p.round_time_2
+            pObj.round_time_3 = p.round_time_3
+            pObj.auto_start = p.auto_start
+            pObj.status = p.status
+            console.log('Update', JSON.stringify(pObj.id), JSON.stringify(pObj.ams_code))
+            return pObj.save()
+          } else {
+            return pObj
+          }
+        } else {
+          console.log('Insert', pObj.ams_code)
+          return Products.create(p)
+        }
+      }).then(productObj => {
         let product = productObj.get()
         product.images = []
         if (productImgs[p.req_id]) {
@@ -310,9 +335,11 @@ class ProductService {
           return product
         }
       })
+    }).catch(error => {
+      console.log('error in import', error)
     })
     return Promise.all(creates).then(() => {
-      console.log('Import success', sellerId)
+      console.log('Import success for Seller', sellerId)
       return self.getProductsBySeller(sellerId)
     }).catch(error => {
       console.error('error', error)
