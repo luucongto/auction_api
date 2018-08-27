@@ -61,57 +61,17 @@ class SocketManager {
     data.socket.on('seller', params => {
       switch (params.command) {
         case 'seller_get':
-          self.service.getProductsBySeller(data.id, data.role === 'admin').then(result => {
-            self._emitUser(data.id, {success: true, products: result}, 'seller_message')
-          })
+          AuctionBot.sellerGet(data)
           break
         case 'update':
-          params.user_id = data.id
-          self.service.update(params.id, params).then(result => {
-            if (result instanceof Error) {
-              self._emitUser(data.id, {success: false, msg: result.message}, 'seller_message')
-              return
-            }
-            console.log('result', JSON.stringify(result))
-            let product = result
-            self._addProductToQueue(product)
-            self._broadCastToAuctionRoom([product])
-            self._emitUser(data.id, {success: true, msg: 'update_product_success', msgParams: {id: params.id}, product}, 'seller_message')
-          }).catch(error => {
-            console.error(error)
-            self._emitUser(data.id, {success: false, msg: error.message}, 'seller_message')
-          })
+          AuctionBot.sellerUpdate(data, params)
           break
         case 'remove': {
-          this.service.update(params.id, {id: params.id, status: Const.PRODUCT_STATUS.HIDE, user_id: data.id, seller_id: data.id}).then(result => {
-            if (result instanceof Error) {
-              self._emitUser(data.id, {success: false, msg: result.message}, 'seller_message')
-              return
-            }
-            let product = result
-            self._addProductToQueue(product)
-            self._broadCastToAuctionRoom([product])
-            self._emitUser(data.id, {success: true, msg: 'update_product_success', msgParams: {id: params.id}, product}, 'seller_message')
-          }).catch(error => {
-            console.error(error)
-            self._emitUser(data.id, {success: false, msg: error.message}, 'seller_message')
-          })
+          AuctionBot.sellerUpdate(data, {id: params.id, status: Const.PRODUCT_STATUS.HIDE, user_id: data.id, seller_id: data.id})
           break
         }
         case 'show': {
-          this.service.update(params.id, {id: params.id, status: Const.PRODUCT_STATUS.WAITING, user_id: data.id, seller_id: data.id}).then(result => {
-            if (result instanceof Error) {
-              self._emitUser(data.id, {success: false, msg: result.message}, 'seller_message')
-              return
-            }
-            let product = result
-            self._addProductToQueue(product)
-            self._broadCastToAuctionRoom([product])
-            self._emitUser(data.id, {success: true, msg: 'update_product_success', msgParams: {id: params.id}, product}, 'seller_message')
-          }).catch(error => {
-            console.error(error)
-            self._emitUser(data.id, {success: false, msg: error.message}, 'seller_message')
-          })
+          AuctionBot.sellerUpdate(data, {id: params.id, status: Const.PRODUCT_STATUS.WAITING, user_id: data.id, seller_id: data.id})
           break
         }
       }

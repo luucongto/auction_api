@@ -199,16 +199,14 @@ Initialized. Start Processing Auctions.
         self.autoBidQueues[product.id] = []
       }
       self.autoBidQueues[product.id] = self.autoBidQueues[product.id].concat(autobids)
-      console.log(product.id, self.autoBidQueues[product.id].length)
-    })
-
-    return AuctionBids.findAll({
-      where: {
-        product_id: product.id
-      },
-      order: [
-        ['bid_price', 'desc']
-      ]
+      return AuctionBids.findAll({
+        where: {
+          product_id: product.id
+        },
+        order: [
+          ['bid_price', 'desc']
+        ]
+      })
     }).then(bids => {
       product.bidders = []
       if (bids.length) {
@@ -222,7 +220,7 @@ Initialized. Start Processing Auctions.
           end_at: bids[0].placed_at + self._getRoundTime(product, 1)
         }
       }
-      console.log('Add Product:', product.id, product.name, product.ams_code)
+      console.log('Add Product:', product.id, JSON.stringify(product.name), JSON.stringify(product.ams_code), self.autoBidQueues[product.id].length)
       self.products[product.id] = product
       return product
     })
@@ -428,6 +426,33 @@ Initialized. Start Processing Auctions.
     if (needBroadcast) {
       return product
     } return null
+  }
+
+  // seller
+  sellerGet (data) {
+    let self = this
+    self.service.getProductsBySeller(data.id, data.role === 'admin').then(result => {
+      self._emitUser(data.id, {success: true, products: result}, 'seller_message')
+    })
+  }
+
+  sellerUpdate (data, params) {
+    let self = this
+    params.user_id = data.id
+    self.service.update(params.id, params).then(result => {
+      if (result instanceof Error) {
+        self._emitUser(data.id, {success: false, msg: result.message}, 'seller_message')
+        return
+      }
+      console.log('result', JSON.stringify(result))
+      let product = result
+      self._addProductToQueue(product)
+      self._broadCastToAuctionRoom([product])
+      self._emitUser(data.id, {success: true, msg: 'update_product_success', msgParams: {id: params.id}, product}, 'seller_message')
+    }).catch(error => {
+      console.error(error)
+      self._emitUser(data.id, {success: false, msg: error.message}, 'seller_message')
+    })
   }
 }
 
