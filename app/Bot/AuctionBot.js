@@ -439,7 +439,7 @@ Initialized. Start Processing Auctions.
   sellerUpdate (data, params) {
     let self = this
     params.user_id = data.id
-    self.service.update(params.id, params).then(result => {
+    self.service.update(params).then(result => {
       if (result instanceof Error) {
         self._emitUser(data.id, {success: false, msg: result.message}, 'seller_message')
         return

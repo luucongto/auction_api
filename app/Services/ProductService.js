@@ -182,11 +182,13 @@ class ProductService {
     })
   }
 
-  update (id, params) {
+  update (params) {
     return User.findById(params.user_id).then(user => {
       if (user.role === 'seller' || user.role === 'admin') {
         return Products.findById(params.id).then(product => {
-          if (!product || (product.status !== Const.PRODUCT_STATUS.WAITING && product.status !== Const.PRODUCT_STATUS.AUCTIONING && product.status !== Const.PRODUCT_STATUS.HIDE)) {
+          if (!product) {
+            return new Error(`Unauthorized!!! Product is not existed!!!`)
+          } else if ((product.status !== Const.PRODUCT_STATUS.WAITING && product.status !== Const.PRODUCT_STATUS.AUCTIONING && product.status !== Const.PRODUCT_STATUS.HIDE)) {
             return new Error('Unauthorized!!! Product cannot be edited!!!')
           }
           if (user.role !== 'admin' && product.seller_id !== params.user_id) return new Error('Unauthorized')
@@ -200,6 +202,7 @@ class ProductService {
           if (params.round_time_3 !== undefined) product.round_time_3 = parseInt(params.round_time_3)
           if (params.auto_start !== undefined) product.auto_start = !!params.auto_start
           if (params.status !== undefined && (params.status === Const.PRODUCT_STATUS.HIDE || params.status === Const.PRODUCT_STATUS.WAITING)) product.status = params.status
+          console.log('Update', JSON.stringify(params.id), JSON.stringify(params))
           let func = [product.save()]
           if (params.images) {
             params.images = params.images.filter(image => image.src.length || image.caption.length)
@@ -232,7 +235,7 @@ class ProductService {
           return Promise.all(func)
         }).then(result => {
           if (!result || !result.length) {
-            console.log('update error', id, params, result)
+            console.log('update error', params.id, params, result)
             return result
           }
           let product = result[0].get()
@@ -267,6 +270,7 @@ class ProductService {
           round_time_3: parseInt(productWorksheet[`J${i}`].v),
           auto_start: !!(productWorksheet[`K${i}`] && productWorksheet[`K${i}`].v === 'true'),
           status: Const.PRODUCT_STATUS.HIDE,
+          user_id: sellerId,
           created_at: now,
           seller_id: sellerId
         })
@@ -300,39 +304,32 @@ class ProductService {
         }
       }).then(pObj => {
         if (pObj) {
-          if (pObj.seller_id === p.seller_id && (pObj.status === Const.PRODUCT_STATUS.HIDE || pObj.status === Const.PRODUCT_STATUS.WAITING)) {
-            pObj.name = p.name
-            pObj.start_at = p.start_at
-            pObj.start_price = p.start_price
-            pObj.step_price = p.step_price
-            pObj.round_time_1 = p.round_time_1
-            pObj.round_time_2 = p.round_time_2
-            pObj.round_time_3 = p.round_time_3
-            pObj.auto_start = p.auto_start
-            pObj.status = p.status
-            console.log('Update', JSON.stringify(pObj.id), JSON.stringify(pObj.ams_code))
-            return pObj.save()
+          if (pObj.seller_id === p.seller_id && (pObj.status === Const.PRODUCT_STATUS.HIDE || pObj.status === Const.PRODUCT_STATUS.WAITING || pObj.status === Const.PRODUCT_STATUS.AUCTIONING)) {
+            p.id = pObj.id
+            p.status = undefined
+            p.images = productImgs[p.id]
+            return self.update(p)
           } else {
             return pObj
           }
         } else {
           console.log('Insert', pObj.ams_code)
-          return Products.create(p)
-        }
-      }).then(productObj => {
-        let product = productObj.get()
-        product.images = []
-        if (productImgs[p.req_id]) {
-          let imgs = productImgs[p.req_id].map(img => {
-            img.product_id = product.id
-            return img
+          return Products.create(p).then(productObj => {
+            let product = productObj.get()
+            product.images = []
+            if (productImgs[p.req_id]) {
+              let imgs = productImgs[p.req_id].map(img => {
+                img.product_id = product.id
+                return img
+              })
+              return ProductImages.bulkCreate(imgs).then(() => {
+                product.images = imgs
+                return product
+              })
+            } else {
+              return product
+            }
           })
-          return ProductImages.bulkCreate(imgs).then(() => {
-            product.images = imgs
-            return product
-          })
-        } else {
-          return product
         }
       })
       .catch(error => {
