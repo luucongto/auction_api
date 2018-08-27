@@ -335,8 +335,9 @@ class ProductService {
           return product
         }
       })
-    }).catch(error => {
-      console.log('error in import', error)
+      .catch(error => {
+        console.log('error in import', error)
+      })
     })
     return Promise.all(creates).then(() => {
       console.log('Import success for Seller', sellerId)
