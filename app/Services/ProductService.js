@@ -261,7 +261,7 @@ class ProductService {
           req_id: productWorksheet[`A${i}`].v,
           name: productWorksheet[`B${i}`].v,
           category: productWorksheet[`C${i}`].v,
-          ams_code: productWorksheet[`D${i}`].v,
+          ams_code: productWorksheet[`D${i}`].v.trim().replace('\n', ' ').replace('\r\n', ' '),
           start_at: Math.floor(startAt / 1000),
           start_price: parseInt(productWorksheet[`F${i}`].v),
           step_price: parseInt(productWorksheet[`G${i}`].v),
