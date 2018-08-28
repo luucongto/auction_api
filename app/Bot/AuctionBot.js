@@ -386,12 +386,12 @@ Initialized. Start Processing Auctions.
       }})
       needBroadcast = true
     }
-          // if round is activating
+    self._placeAutoBidToBidQueue(product.id)
+    // if round is activating
     if (product.round) {
             // if this round is end, go to next round
       if (product.round.end_at < now) {
         product.round.num++
-        self._placeAutoBidToBidQueue(product.id)
         needBroadcast = true
       } else if (!needBroadcast) {
         return null
