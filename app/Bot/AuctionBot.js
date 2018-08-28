@@ -3,6 +3,7 @@ import { AuctionBids, AuctionConfigs, Products, User, AutoBid } from '../Models'
 import underscore from 'underscore'
 import Const from '../config/config'
 import SocketManager from './SocketManager'
+import {Op} from 'sequelize'
 
 const MAX_BID = 1000000000 // 1bil
 class AuctionBot {
@@ -146,11 +147,6 @@ Initialized. Start Processing Auctions.
       self._emitUser(userId, {success: false, productId: product.id}, 'auto_bid_message')
       return
     }
-    if(params.auto_bid_price > 0 && params.auto_bid_price < product.start_price) {
-      self._emitUser(userId, { type: 'error', msg: 'you_should_autobid_at_least', msgParams: {value: product.start_price} }, 'server_message')
-      self._emitUser(userId, {success: false, productId: product.id}, 'auto_bid_message')
-      return
-    }
     let data = {
       user_id: userId,
       product_id: product.id,
@@ -170,29 +166,24 @@ Initialized. Start Processing Auctions.
   }
   _placeAutoBidToBidQueue (productId) {
     let self = this
-    if (self.autoBidQueues[productId]) {
-      // Remove small price auto bid
-      let stop = false
-      while (!stop) {
-        let product = self.products[productId]
-        let nextPrice = (product.round ? product.round.bid_price  + product.step_price : product.start_price)
-        self.autoBidQueues[productId] = self.autoBidQueues[productId].filter(bid => bid.price >= nextPrice)
-        let bids = self.autoBidQueues[productId].filter(bid => !product.round || bid.user_id !== product.round.bidder)
-        if (bids.length) {
-          let bid = bids[0]
-          stop = self.addABid({
-            userId: bid.user_id,
-            bid_price: nextPrice,
-            product_id: productId
-          })
-        } else {
-          if(self.autoBidQueues[productId].length > 0){
-            console.log('productId nonvalid at price', nextPrice, JSON.stringify(self.autoBidQueues[productId]) )
-          }
-          stop = true
+    let product = self.products[productId]
+    let nextPrice = (product.round ? product.round.bid_price + product.step_price : product.start_price)
+    AutoBid.findOne({
+      where: {
+        product_id: productId,
+        price: {
+          [Op.gte]: nextPrice
         }
       }
-    }
+    }).then(validBid => {
+      if (validBid) {
+        self.addABid({
+          userId: validBid.user_id,
+          bid_price: nextPrice,
+          product_id: productId
+        })
+      }
+    })
   }
   _addProductToQueue (product) {
     let self = this
