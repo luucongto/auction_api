@@ -171,6 +171,9 @@ Initialized. Start Processing Auctions.
     AutoBid.findOne({
       where: {
         product_id: productId,
+        user_id: {
+          [Op.ne]: product.round ? product.round.bidder : 0
+        },
         price: {
           [Op.gte]: nextPrice
         }
