@@ -146,6 +146,11 @@ Initialized. Start Processing Auctions.
       self._emitUser(userId, {success: false, productId: product.id}, 'auto_bid_message')
       return
     }
+    if(params.auto_bid_price < product.start_price) {
+      self._emitUser(userId, { type: 'error', msg: 'you_should_autobid_at_least', msgParams: {value: product.start_price} }, 'server_message')
+      self._emitUser(userId, {success: false, productId: product.id}, 'auto_bid_message')
+      return
+    }
     let data = {
       user_id: userId,
       product_id: product.id,
@@ -156,6 +161,7 @@ Initialized. Start Processing Auctions.
       if (!self.autoBidQueues[product.id]) {
         self.autoBidQueues[product.id] = []
       }
+      self._emitUser(userId, {type: 'info', msg: 'autobid_is_placed'}, 'server_message')
       self._emitUser(userId, {success: true, productId: product.id}, 'auto_bid_message')
       self._emitUser(userId, [data], 'autoBids')
       self.autoBidQueues[product.id].push(data)
