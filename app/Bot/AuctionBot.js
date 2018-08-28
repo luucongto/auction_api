@@ -146,7 +146,7 @@ Initialized. Start Processing Auctions.
       self._emitUser(userId, {success: false, productId: product.id}, 'auto_bid_message')
       return
     }
-    if(params.auto_bid_price < product.start_price) {
+    if(params.auto_bid_price > 0 && params.auto_bid_price < product.start_price) {
       self._emitUser(userId, { type: 'error', msg: 'you_should_autobid_at_least', msgParams: {value: product.start_price} }, 'server_message')
       self._emitUser(userId, {success: false, productId: product.id}, 'auto_bid_message')
       return
