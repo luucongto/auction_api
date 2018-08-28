@@ -305,7 +305,7 @@ class ProductService {
       }).then(pObj => {
         if (pObj) {
           if (pObj.seller_id === p.seller_id && (pObj.status === Const.PRODUCT_STATUS.HIDE || pObj.status === Const.PRODUCT_STATUS.WAITING || pObj.status === Const.PRODUCT_STATUS.AUCTIONING)) {
-            p.images = productImgs[p.id]
+            p.images = productImgs[p.req_id]
             p.id = pObj.id
             p.status = undefined
             return self.update(p)
@@ -313,7 +313,7 @@ class ProductService {
             return pObj
           }
         } else {
-          console.log('Insert', pObj.ams_code)
+          console.log('Insert', p.ams_code)
           return Products.create(p).then(productObj => {
             let product = productObj.get()
             product.images = []
