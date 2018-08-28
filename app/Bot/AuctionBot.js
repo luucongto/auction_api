@@ -386,7 +386,11 @@ Initialized. Start Processing Auctions.
       }})
       needBroadcast = true
     }
-    self._placeAutoBidToBidQueue(product.id)
+    let rand = Math.floor(Math.random() * 10) + 1
+    if(now % rand === 0){
+      self._placeAutoBidToBidQueue(product.id)
+    }
+    
     // if round is activating
     if (product.round) {
             // if this round is end, go to next round
