@@ -305,9 +305,9 @@ class ProductService {
       }).then(pObj => {
         if (pObj) {
           if (pObj.seller_id === p.seller_id && (pObj.status === Const.PRODUCT_STATUS.HIDE || pObj.status === Const.PRODUCT_STATUS.WAITING || pObj.status === Const.PRODUCT_STATUS.AUCTIONING)) {
+            p.images = productImgs[p.id]
             p.id = pObj.id
             p.status = undefined
-            p.images = productImgs[p.id]
             return self.update(p)
           } else {
             return pObj
